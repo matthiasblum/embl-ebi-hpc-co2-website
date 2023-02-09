@@ -11,7 +11,7 @@ pip install -r requirements.txt
 npm i -g http-server
 ```
 
-## Start API
+## API
 
 Set environment variables:
 
