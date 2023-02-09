@@ -36,5 +36,5 @@ uvicorn [--reload] --host 0.0.0.0 --port 5000 --workers 4 api:app
 ## Client
 
 ```shell
-http-server --log-ip -a 0.0.0.0 -p 8080
+http-server --log-ip -a 0.0.0.0 -p 8080 client
 ```
