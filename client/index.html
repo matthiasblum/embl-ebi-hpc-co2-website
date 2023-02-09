@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Carbon footprint @ EMBL-EBI</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@materializecss/materialize@1.1.0/dist/css/materialize.min.css">
+        <link rel="stylesheet" href="styles.css">
+        <link rel="icon" type="image/x-icon" href="https://www.ebi.ac.uk/favicon.ico">
+    </head>
+    <body>
+        <section id="loader">
+            <div class="container">
+                <div class="row">
+                    <div class="col l12 center">
+                        <div class="preloader-wrapper big active">
+                            <div class="spinner-layer spinner-blue-only">
+                                <div class="circle-clipper left">
+                                    <div class="circle"></div>
+                                </div><div class="gap-patch">
+                                <div class="circle"></div>
+                            </div><div class="circle-clipper right">
+                                <div class="circle"></div>
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="container">
+            <header>
+                <nav id="top-nav">
+                    <h1>🌱 EMBL-EBI &ndash; Carbon footprint</h1>
+                </nav>
+                <p>
+                    Last updated: <span id="last-updated"></span>
+                </p>
+            </header>
+
+            <div class="row">
+                <div class="col l2">
+                    <div id="toc-wrapper">
+                        <ul class="section table-of-contents">
+                            <li><a href="#intro">Introduction</a></li>
+                            <li><a href="#activity">Activity</a></li>
+                            <li><a href="#groups">Groups</a></li>
+                            <!--                            <li><a href="#users">Users</a></li>-->
+                            <li><a href="#memory">Memory</a></li>
+                            <li><a href="#cpu">CPU</a></li>
+                            <li><a href="#runtime">Runtime</a></li>
+                            <li><a href="#status">Status</a></li>
+                            <li>
+                                <a href="#details">Details</a>
+                                <ul style="display: none">
+                                    <li><a href="#user-activity">Activity</a></li>
+                                    <li><a href="#user-memory">Memory</a></li>
+                                    <li><a href="#user-status">Status</a></li>
+                                    <li><a href="#user-groups">Groups</a></li>
+                                    <li><a href="#user-reports">Reports</a></li>
+                                </ul>
+                            </li>
+                            <li><a href="#contact">Contact</a></li>
+                            <li><a href="#faq">FAQ</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col l10">
+                    <div id="intro" class="section scrollspy">
+                        <p>
+                            Computing is a major contributor to energy consumption, and thus is one of the main sources of carbon emission.
+                            In the context of the global climate crisis, it is imperative that individuals and organizations
+                            find ways to assess then reduce the carbon footprint of their work.
+                        </p>
+
+                        <p>
+                            This page aims to represent the carbon footprint that we are, collectively and individually,
+                            responsible for at EMBL-EBI. LSF jobs submitted to the Codon High Performance Cluster were monitored,
+                            information such as resource requested, run time, memory efficiency, etc. were collected,
+                            and the carbon footprint was calculated using the formula proposed
+                            by <a href="https://green-algorithms.org/">Green Algorithms</a> and the following assumptions:
+                        </p>
+
+                        <table>
+                            <tbody>
+                                <tr>
+                                    <th>CPU</th>
+                                    <td>Intel Xeon Gold 6252, 6.3 W/core</td>
+                                </tr>
+                                <tr>
+                                    <th>GPU</th>
+                                    <td>NVIDIA Tesla V100, 300 W/core</td>
+                                </tr>
+                                <tr>
+                                    <th>Default memory available</th>
+                                    <td>2 GB</td>
+                                </tr>
+                                <tr>
+                                    <th>Memory power</th>
+                                    <td>0.3725 W/GB</td>
+                                </tr>
+                                <tr>
+                                    <th>Power usage effectiveness</th>
+                                    <td>1.2<!-- (<a href="https://kaodata.com/sustainability">https://kaodata.com/sustainability</a>)--></td>
+                                </tr>
+                                <tr>
+                                    <th>Carbon intensity</th>
+                                    <td>231.12 gCO<sub>2</sub>e/kWh</td>
+                                </tr>
+                                <tr>
+                                    <th>Energy cost</th>
+                                    <td>£0.34/kWh</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="card-panel warning">
+                            <p>
+                                We built this tool in the hope to raise awareness of computing usage,
+                                highlight resources waste, and foster good computing practices.
+                                This is intended to be a lightweight carbon footprint calculator, not a cluster monitoring system.
+                            </p>
+                        </div>
+                    </div>
+                    <div id="activity" class="section scrollspy">
+                        <h4>Activity</h4>
+                        <p>
+                            Cores and memory used by jobs running on Codon in the past <span class="days"></span> days.
+                        </p>
+                        <div class="card-panel info">
+                            <p>
+                                LSF does not report the seconds of the start and completion times of jobs, therefore the minimum runtime is one minute.
+                                If many jobs are submitted, started, and completed within one minute, it will seem as if they were all running in parallel.
+                                This can lead to charts showing surges in resource consumption, even beyond the capacity of the cluster.
+                            </p>
+                        </div>
+                        <div id="activity-charts">
+                            <div id="cores-activity"></div>
+                            <div id="memory-activity"></div>
+                        </div>
+                    </div>
+
+                    <div id="groups" class="section scrollspy">
+                        <h4>Research & service groups</h4>
+                        <p>
+                            Carbon footprint of research and service groups in the past <span class="days"></span> days.
+                        </p>
+
+                        <h5>Main contributors to EMBL-EBI's carbon footprint</h5>
+                        <div id="teams-main-contrib"></div>
+
+                        <h5>Daily carbon footprint</h5>
+                        <div id="teams-daily"></div>
+
+                        <h5>All groups</h5>
+                        <table id="teams-table">
+                            <thead>
+                                <tr>
+                                    <th>Group</th>
+                                    <th>Carbon footprint</th>
+                                    <th>Cost</th>
+                                    <th>Contribution</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div id="memory" class="section scrollspy">
+                        <h4>Memory efficiency</h4>
+                        <p>
+                            Memory can be a significant source of waste, because the power draw from memory mainly depends
+                            on the memory available, not the actual memory used.
+                            The chart below shows the distribution of the memory efficiency
+                            collected from <span class="count"></span> jobs that successfully
+                            completed in the past <span class="days"></span> days.
+                        </p>
+                        <div id="memdist-chart"></div>
+
+                        <p>
+                            Using the memory efficiency, we can estimate how much memory was <em>needed</em> to run a job.
+                            If all jobs above had been submitted with only the memory they needed plus 10%, EMBL-EBI would have emitted
+                            <span class="co2-wasted"></span> and saved <span class="cost-wasted"></span>.
+                        </p>
+                    </div>
+
+                    <div id="cpu" class="section scrollspy">
+                        <h4>CPU efficiency</h4>
+                        <p>
+                            While idling cores consume less power thus have a lower carbon footprint,
+                            long-running jobs monopolising a lot of memory and with a low CPU efficiency
+                            (typically, interactive jobs doing nothing for hours or days) are a waste of resources.
+                            The chart below shows the distribution of the CPU efficiency of jobs that successfully
+                            completed in the past <span class="days"></span> days.
+                        </p>
+                        <div id="cpudist-chart"></div>
+                    </div>
+
+                    <div id="runtime" class="section scrollspy">
+                        <h4>Runtime</h4>
+                        <p>
+                            Submitting too many short jobs can overload the resource manager
+                            and lead to poor cluster efficiency.
+                            The chart below shows the distribution of runtime of jobs that
+                            successfully completed in the past <span class="days"></span> days.
+                        </p>
+                        <div id="runtimes-chart"></div>
+                    </div>
+
+                    <div id="status" class="section scrollspy">
+                        <h4>Status</h4>
+                        <p>
+                            Because any resource spent on a job is wasted if the job fails, it
+                            is important to test pipelines on small testing samples.
+                            The chart below shows the success rate of <span class="count"></span>
+                            jobs that completed in the past <span class="days"></span> days.
+                        </p>
+                        <div id="status-chart"></div>
+                        <p>
+                            The failed jobs represent <span class="co2-wasted"></span>
+                            and an overall cost of <span class="cost-wasted"></span>.
+                        </p>
+                    </div>
+
+                    <div id="details" class="section scrollspy">
+                        <h4>Details</h4>
+                        <p>
+                            Find out your or your team's recent carbon footprint,
+                            and view monthly reports of your activity.<br>
+                            You need a unique identifier to access this section. <a data-action="sign-up" href="javascript:void(0);">Sign up</a> to receive it by email.
+                        </p>
+
+                        <form class="row">
+                            <div class="input-field col l8">
+                                <input id="uuid" type="password" class="validate" required>
+                                <label for="uuid">UUID</label>
+                                <span class="helper-text">Unique identifier sent to you by email</span>
+                            </div>
+                            <div class="input-field col l2">
+                                <label>
+                                    <input type="checkbox" class="custom blue filled-in" />
+                                    <span>Remember me</span>
+                                </label>
+                            </div>
+                            <div class="input-field col l2">
+                                <button class="custom blue fluid btn" type="submit">Sign in</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="user-details" style="display: none;">
+                        <div id="user-info">
+                            <img class="circle" alt="" src="">
+                            <div class="content">
+                                <h6></h6>
+                                <div class="block" data-info="position"></div>
+                                <div class="block" data-info="footprint"></div>
+                                <div class="block">
+                                    <a id="sign-out" href="javascript:void(0);" class="red-text">Sign out</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="user-activity" class="scrollspy">
+                            <h5>Recent activity</h5>
+                            <div></div>
+                        </div>
+                        <div id="user-memory" class="scrollspy">
+                            <h5>Memory efficiency of recent successful jobs</h5>
+                            <div></div>
+                        </div>
+                        <div id="user-status" class="scrollspy">
+                            <h5>Success rate of recent jobs</h5>
+                            <div></div>
+                        </div>
+                        <div id="user-groups" class="scrollspy"></div>
+                        <div id="user-reports" class="scrollspy">
+                            <h5>Monthly reports</h5>
+                            <label for="select-report">Select a report</label>
+                            <select id="select-report" class="browser-default"></select>
+                            <div id="user-report" style="display: none"></div>
+                        </div>
+                    </div>
+                    <div id="contact" class="section scrollspy">
+                        <h4>Contact</h4>
+                        <p>
+                            If you want to report a bug or a user assigned to the wrong team,
+                            request a feature, or just give some general feedback, you can contact me by <a id="contact-email">email</a><span id="contact-slack"></span>.
+                        </p>
+                    </div>
+                    <div id="faq" class="section scrollspy">
+                        <h4>FAQ</h4>
+                        <p>
+                            <span class="question">How is the information on LSF jobs collected?</span>
+                            We run the command below every 30 minutes to list all jobs that are currently pending or running, or that have recently finished.<br>
+                        </p>
+                        <pre>bjobs -u all -a -json \
+      -o <span class="green-text text-darken-4">"jobid jobindex job_name stat user \
+         queue slots memlimit max_mem from_host \
+         exec_host submit_time start_time finish_time \
+         cpu_efficiency mem_efficiency cpu_used"</span></pre>
+                        <p>
+                            <span class="question">How can I see the carbon footprint of individual users?</span>
+                            To avoid name and shame, we do not display the individual activity and carbon footprint of each user.<br>
+                            You can <a href="#details">sign in</a> to see your own carbon footprint and that of the other members of your team, and to see monthly report on your activity.
+                        </p>
+                        <p>
+                            <span class="question">A user is assigned to the wrong team!</span>
+                            Linking users to teams is not fully automated and is prone to errors.
+                            Let us know, and we will assign the user to the correct team.
+                        </p>
+                        <p>
+                            <span class="question">Can I see my carbon footprint between two specific dates?</span>
+                            We do not currently support user-submitted time intervals.
+                        </p>
+                        <p>
+                            <span class="question">Is there a public API?</span>
+                            An interactive API documentation is available at <a id="openapi"></a>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div id="sign-up" class="modal">
+            <div class="modal-content">
+                <h4>Sign up</h4>
+                <form class="row">
+                    <div class="input-field col l9">
+                        <input id="user-email" type="email" class="validate" required>
+                        <label for="user-email">Email</label>
+                        <span class="helper-text"></span>
+                    </div>
+                    <div class="input-field col l3">
+                        <button class="custom blue btn fluid" type="submit">Sign up</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <a href="#!" class="modal-close btn-flat">Close</a>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/@materializecss/materialize@1.1.0/dist/js/materialize.min.js"></script>
+        <script src="https://code.highcharts.com/10.3/highcharts.js"></script>
+        <script src="https://code.highcharts.com/10.3/modules/annotations.js"></script>
+        <script src="app.js" type="module"></script>
+    </body>
+</html>
