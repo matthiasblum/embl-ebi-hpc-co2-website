@@ -17,7 +17,7 @@ Set environment variables:
 
 ```shell
 export ADMIN_EMAIL=me@domain.com
-export DATABASE=/path/to/slim.database
+export DATABASE=/path/to/database.sqlite
 export SMTP_HOST=smtp.domain.com
 export SMTP_PORT=587
 
