@@ -34,7 +34,7 @@ async function showOverallActivity(apiUrl) {
                 xAxis: 0,
                 yAxis: 0,
                 x: event.x,
-                y: event.y
+                y: dataType === 'cores' ? event.y : event.y / 1024
             },
             text: event.text
         }));
