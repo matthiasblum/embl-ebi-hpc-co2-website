@@ -65,7 +65,8 @@ async function signUp(apiUrl, email) {
             'Content-Type': 'application/json'
         },
     });
-    return response.ok;
+    const payload = await response.json();
+    return {ok: response.ok, error: payload.detail};
 }
 
 function switchSignForm(apiUrl) {
@@ -90,7 +91,7 @@ function switchSignForm(apiUrl) {
                 helperText.innerHTML = 'Sending an email, hang tight...'
 
                 signUp(apiUrl, email)
-                    .then((ok) => {
+                    .then(({ok, error}) => {
                         if (ok) {
                             MODAL.el.querySelector('button[type="submit"]').disabled = true;
                             input.className = 'valid validated';
@@ -106,7 +107,7 @@ function switchSignForm(apiUrl) {
                             }, delay);
                         } else {
                             input.className = 'invalid validated';
-                            helperText.dataset.error = `500 Internal Server Error. Could not send email to ${email}.`;
+                            helperText.dataset.error = `${error.status} ${error.title}. ${error.detail}.`;
                         }
                     })
             });
