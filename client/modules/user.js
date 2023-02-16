@@ -193,7 +193,7 @@ async function getUserReport(apiUrl, uuid, month) {
 }
 
 async function initUser(apiUrl, uuid, user) {
-    document.querySelector('#user-info img').src = user.photoUrl;
+    document.querySelector('#user-info img').src = user.photoUrl || 'https://content.embl.org/sites/default/files/default_images/vf-icon--avatar.png';
 
     if (user.name !== null)
         document.querySelector('#user-info h6').innerHTML = `${user.name} (${user.login})`;
