@@ -130,14 +130,17 @@ async def get_overall_activity(days: int = settings.days):
     for dt_str, ts, users_data, _ in iter_usage(con, days):
         user_cores = {}
         user_memory = {}
+        submitted_jobs = 0
         for user, values in users_data.items():
             user_cores[user] = values[1]
             user_memory[user] = values[2]
+            submitted_jobs += values[5]
 
         activity.append({
             "timestamp": ts,
             "cores": sum(user_cores.values()),
             "memory": sum(user_memory.values()),
+            # "jobs_submitted": submitted_jobs
         })
 
         if len(sliding_window) == 8:  # 8 * 15min: window of 2h
