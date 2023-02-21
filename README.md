@@ -16,7 +16,8 @@ npm i -g http-server
 Set environment variables:
 
 ```shell
-export ADMIN_EMAIL=me@domain.com
+export ADMIN_EMAIL=me@domain.com,another@domain.com
+export ADMIN_PASSWORD=********
 export DATABASE=/path/to/database.sqlite
 export SMTP_HOST=smtp.domain.com
 export SMTP_PORT=587

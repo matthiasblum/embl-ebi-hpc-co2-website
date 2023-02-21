@@ -14,6 +14,7 @@ from pydantic import BaseModel, BaseSettings
 class Settings(BaseSettings):
     database: str
     admin_email: list[str]
+    admin_password: str
     smtp_host: str
     smtp_port: int
     admin_slack: str = None
@@ -303,29 +304,30 @@ It allows you to find out your recent activity and carbon footprint.
     msg["Date"] = formatdate(localtime=True)
     msg.set_content(content)
 
+    admin_email = settings.admin_email[0]
+
     with SMTP(host=settings.smtp_host, port=settings.smtp_port) as server:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(admin_email.split('@')[0], settings.admin_password)
         server.send_message(msg)
 
-    if settings.notify_on_signup:
-        msg = EmailMessage()
-        msg["Subject"] = "EMBL-EBI LSF carbon footprint: UUID requested"
-        msg["To"] = settings.admin_email[0]
-        msg["From"] = settings.admin_email[0]
-        msg["Date"] = formatdate(localtime=True)
-        msg.set_content(
-            f"""\
-Someone asked for a UUID reminder.
-Email: {recipient}
-Name:  {name or 'N/A'}
-            """
-        )
+        if settings.notify_on_signup:
+            msg = EmailMessage()
+            msg["Subject"] = "EMBL-EBI LSF carbon footprint: UUID requested"
+            msg["To"] = admin_email
+            msg["From"] = admin_email
+            msg["Date"] = formatdate(localtime=True)
+            msg.set_content(
+                f"""\
+    Someone asked for a UUID reminder.
+    Email: {recipient}
+    Name:  {name or 'N/A'}
+                """
+            )
 
-        try:
-            with SMTP(host=settings.smtp_host,
-                      port=settings.smtp_port) as server:
-                server.send_message(msg)
-        except:
-            pass
+            server.send_message(msg)
 
 
 @app.post("/user/", tags=["Sign up"])
