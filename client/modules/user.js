@@ -65,8 +65,11 @@ async function signUp(apiUrl, email) {
             'Content-Type': 'application/json'
         },
     });
+    if (response.ok)
+        return {ok: true, error: null};
+
     const payload = await response.json();
-    return {ok: response.ok, error: payload.detail};
+    return {ok: false, error: payload.detail};
 }
 
 function switchSignForm(apiUrl) {
