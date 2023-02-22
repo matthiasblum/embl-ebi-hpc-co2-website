@@ -65,11 +65,8 @@ async function signUp(apiUrl, email) {
             'Content-Type': 'application/json'
         },
     });
-    if (response.ok)
-        return {ok: true, error: null};
-
     const payload = await response.json();
-    return {ok: false, error: payload.detail};
+    return {ok: response.ok, payload: payload};
 }
 
 function switchSignForm(apiUrl) {
@@ -94,28 +91,48 @@ function switchSignForm(apiUrl) {
                 helperText.innerHTML = 'Sending an email, hang tight...'
 
                 signUp(apiUrl, email)
-                    .then(({ok, error}) => {
-                        if (ok) {
-                            MODAL.el.querySelector('button[type="submit"]').disabled = true;
-                            input.className = 'valid validated';
-                            let timeout = 5000;
-                            const delay = 1000;
-                            let intervalId = setInterval(() => {
-                                helperText.dataset.success = `An email has been sent to ${email}. This pop-up will close in ${Math.floor(timeout/1000)} seconds.`;
-                                if (timeout === 0) {
-                                    clearInterval(intervalId);
-                                    MODAL.close();
-                                }
-                                timeout -= delay;
-                            }, delay);
-                        } else {
-                            input.className = 'invalid validated';
+                    .then(({ok, payload}) => {
+                        if (!ok) {
+                            const error = payload.detail;
+                            input.className = 'invalid validate';
                             helperText.dataset.error = `${error.status} ${error.title}. ${error.detail}.`;
+                            return;
                         }
+
+                        let sentTo = payload.meta.email;
+                        let timeout = 10000;
+
+                        if (payload.meta.sponsor) {
+                            timeout = 20000;
+                            MODAL.el.querySelector('.card-panel-wrapper').innerHTML = `
+                                <div class="card-panel warning">
+                                    <p>
+                                        ${email} is a virtual account, and it's unlikely that you have access to its emails.
+                                        The UUID has been sent to its sponsor.
+                                    </p>
+                                </div>                            
+                            `;
+                        }
+
+                        MODAL.el.querySelector('button[type="submit"]').disabled = true;
+                        input.className = 'valid validate';
+                        const delay = 1000;
+                        let intervalId = setInterval(() => {
+                            helperText.dataset.success = `An email has been sent to ${sentTo}. This pop-up will close in ${Math.floor(timeout/1000)} seconds.`;
+                            if (timeout === 0) {
+                                clearInterval(intervalId);
+                                MODAL.close();
+                            }
+                            timeout -= delay;
+                        }, delay);
                     })
             });
     }
     MODAL.el.querySelector('button[type="submit"]').disabled = false;
+    MODAL.el.querySelector('.card-panel-wrapper').innerHTML = '';
+    const input = MODAL.el.querySelector('input');
+    input.className = 'validate';
+    input.value = null;
     MODAL.open();
 }
 

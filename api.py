@@ -283,23 +283,22 @@ class User(BaseModel):
     email: str
 
 
-def send_email(login: str, name: str | None, uuid: str, recipient: str):
+def send_email(login: str, recipient: str, to_email: str, uuid: str):
     content = f"""\
-Dear {name or login},
+Dear {recipient},
 
-You, or someone posing as you, has requested to receive your UUID for the \
-EMBL-EBI LSF carbon footprint monitoring website.
+You, or someone else, requested the UUID for {login}.
 
-Your UUID is: {uuid}
+It allows you to find out the recent activity and carbon footprint of {login}.
 
-It allows you to find out your recent activity and carbon footprint.
+The UUID is: {uuid}
 
 (This is an automated email)
     """
 
     msg = EmailMessage()
     msg["Subject"] = f"EMBL-EBI carbon footprint: UUID reminder for {login}"
-    msg["To"] = recipient
+    msg["To"] = to_email
     msg["From"] = settings.admin_email[0]
     msg["Date"] = formatdate(localtime=True)
     msg.set_content(content)
@@ -322,9 +321,9 @@ It allows you to find out your recent activity and carbon footprint.
             msg["Date"] = formatdate(localtime=True)
             msg.set_content(
                 f"""\
-Someone asked for a UUID reminder.
-Email: {recipient}
-Name:  {name or 'N/A'}
+Someone asked for a UUID reminder:
+User: {login}
+Name: {recipient}
                 """
             )
 
@@ -333,29 +332,54 @@ Name:  {name or 'N/A'}
 
 @app.post("/user/", tags=["Sign up"])
 async def sign_up(user: User):
-    login = user.email.split("@")[0]
+    login, domain = user.email.split("@", maxsplit=1)
     con = sqlite3.connect(settings.database)
-    row = con.execute("SELECT name, uuid FROM user "
+    row = con.execute("SELECT name, uuid, sponsor FROM user "
                       "WHERE login=?", [login]).fetchone()
-    con.close()
 
     if row is None:
+        con.close()
         raise HTTPException(status_code=400, detail={
             "status": "400",
             "title": "Bad Request",
             "detail": f"No user found with e-mail address {user.email}"
         })
 
-    name, uuid = row
+    name, uuid, sponsor = row
+
+    if sponsor:
+        row = con.execute("SELECT name FROM user "
+                          "WHERE login=?", [sponsor]).fetchone()
+        if row is not None and row[0] is not None:
+            # We know the name of the sponsor
+            recipient = row[0]
+        else:
+            # Use sponsor's login
+            recipient = sponsor
+
+        to_email = f"{sponsor}@{domain}"
+    else:
+        recipient = name or login
+        to_email = user.email
+
+    con.close()
 
     try:
-        send_email(login, name, uuid, user.email)
-    except:
+        send_email(login, recipient, to_email, uuid)
+    except Exception as exc:
+        print(exc)
         raise HTTPException(status_code=500, detail={
             "status": "500",
             "title": "Internal Server Error",
             "detail": f"Could not send email to {user.email}"
         })
+
+    return {
+        "meta": {
+            "email": to_email,
+            "sponsor": bool(sponsor)
+        }
+    }
 
 
 @app.get("/user/{uuid}/footprint/", tags=["User footprint"])
@@ -684,7 +708,7 @@ async def get_job_statuses(days: int = settings.days):
 
 def get_last_update(con: sqlite3.Connection) -> datetime:
     time, = con.execute("SELECT value FROM metadata "
-                        "WHERE key = 'updated'").fetchone()
+                        "WHERE key = 'jobs'").fetchone()
     return datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
 
 
