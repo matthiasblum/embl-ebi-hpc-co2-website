@@ -298,7 +298,7 @@ It allows you to find out your recent activity and carbon footprint.
     """
 
     msg = EmailMessage()
-    msg["Subject"] = "EMBL-EBI LSF carbon footprint: UUID reminder"
+    msg["Subject"] = f"EMBL-EBI carbon footprint: UUID reminder for {login}"
     msg["To"] = recipient
     msg["From"] = settings.admin_email[0]
     msg["Date"] = formatdate(localtime=True)
@@ -315,15 +315,16 @@ It allows you to find out your recent activity and carbon footprint.
 
         if settings.notify_on_signup:
             msg = EmailMessage()
-            msg["Subject"] = "EMBL-EBI LSF carbon footprint: UUID requested"
+            msg["Subject"] = (f"EMBL-EBI carbon footprint: "
+                              f"UUID requested for {login}")
             msg["To"] = admin_email
             msg["From"] = admin_email
             msg["Date"] = formatdate(localtime=True)
             msg.set_content(
                 f"""\
-    Someone asked for a UUID reminder.
-    Email: {recipient}
-    Name:  {name or 'N/A'}
+Someone asked for a UUID reminder.
+Email: {recipient}
+Name:  {name or 'N/A'}
                 """
             )
 
