@@ -269,10 +269,34 @@ async function showTeamsFootprint(apiUrl) {
         .map((a) => a.co2e)
         .reduce((previousValue, currentValue) => previousValue + currentValue);
 
+    const times = [
+        // unit, number of seconds, precision
+        ['year', 3600 * 24 * 365, 2],
+        ['month', 3600 * 24 * 30, 2],
+        ['week', 3600 * 24 * 7, 1],
+        ['day', 3600 * 24, 1],
+        ['hour', 3600, 0],
+        ['minute', 60, 0],
+    ]
+    const pluralize = (x => x >= 2 ? 's' : '');
+
     new Table({
         root: document.getElementById('teams-table'),
         columns: [
             { data: 'name' },
+            // {
+            //     data: 'cputime',
+            //     searchable: false,
+            //     render: function (value) {
+            //         for (const [unit, seconds, precision] of times) {
+            //             if (value >= seconds) {
+            //                 const x = value / seconds;
+            //                 return `${round(x, precision)} ${unit}${pluralize(x)}`;
+            //             }
+            //         }
+            //         return `${round(value, 0)} second${pluralize(value)}`;
+            //     }
+            // },
             {
                 data: 'co2e',
                 searchable: false,
@@ -290,7 +314,7 @@ async function showTeamsFootprint(apiUrl) {
                     const contribution = value / totalEmissions * 100;
                     return contribution >= 0.1 ? contribution.toFixed(2) + '%' : '&lt; 0.1%';
                 }
-            },
+            }
         ],
         data: payload.data.teams
     });
