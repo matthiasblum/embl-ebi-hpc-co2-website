@@ -9,45 +9,71 @@ async function showOverallActivity(apiUrl) {
 
     const charts = [];
     let zoomedOnChartIndex = null;
-    const setExtremes = (event, index) => {
-        if (zoomedOnChartIndex !== null && zoomedOnChartIndex !== index)
+    const setExtremes = (event, i) => {
+        if (zoomedOnChartIndex !== null && zoomedOnChartIndex !== i)
             return;
 
-        zoomedOnChartIndex = index;
-        const chart = index === 0 ? charts[1] : charts[0];
+        zoomedOnChartIndex = i;
+        charts.forEach((chart, j) => {
+            if (i !== j) {
+                chart.xAxis[0].setExtremes(event.min, event.max);
 
-        chart.xAxis[0].setExtremes(event.min, event.max);
+                const showResetZoom = !(event.userMin === undefined && event.userMax === undefined);
 
-        const showResetZoom = !(event.userMin === undefined && event.userMax === undefined);
-
-        if (showResetZoom && !chart.resetZoomButton)
-            chart.showResetZoom();
-        else if (!showResetZoom && chart.resetZoomButton)
-            chart.resetZoomButton = chart.resetZoomButton.destroy();
+                if (showResetZoom && !chart.resetZoomButton)
+                    chart.showResetZoom();
+                else if (!showResetZoom && chart.resetZoomButton)
+                    chart.resetZoomButton = chart.resetZoomButton.destroy();
+            }
+        });
 
         zoomedOnChartIndex = null;
     };
 
-    ['cores', 'memory'].forEach((dataType, i) => {
-        const labels = payload.data.events[dataType].map((event) => ({
-            point: {
-                xAxis: 0,
-                yAxis: 0,
-                x: event.x,
-                y: dataType === 'cores' ? event.y : event.y / 1024
-            },
-            text: event.text
-        }));
+    ['jobs', 'cores', 'memory'].forEach((dataType, i) => {
+        let labels = [];
+        if (payload.data.events[dataType] !== undefined) {
+            labels = payload.data.events[dataType].map((event) => ({
+                point: {
+                    xAxis: 0,
+                    yAxis: 0,
+                    x: event.x,
+                    y: dataType === 'cores' ? event.y : event.y / 1024
+                },
+                text: event.text
+            }));
+        }
+        let getY;
+        let tooltipSuffix = undefined;
+        let title = undefined;
+        let yAxisTitle = undefined;
+        switch (dataType) {
+            case 'jobs':
+                getY = (x => x.jobs.submitted);
+                title = 'Submitted jobs';
+                yAxisTitle = 'Jobs';
+                break
+            case 'memory':
+                getY = (x => round(x.memory / 1024, 3))
+                tooltipSuffix = ' TB';
+                title = 'Memory';
+                yAxisTitle = 'Memory (TB)';
+                break
+            default:
+                getY = (x => x[dataType]);
+                title = 'Cores';
+                yAxisTitle = 'Cores';
+        }
 
         const chart = Highcharts.chart(`${dataType}-activity`, {
             chart: {
                 type: 'area',
-                height: 300,
+                height: 225,
                 marginLeft: 100,
                 zoomType: 'x'
             },
             title: {
-                text: dataType.charAt(0).toUpperCase() + dataType.slice(1),
+                text: title,
                 align: 'left',
                 margin: 0,
                 x: 30
@@ -75,9 +101,7 @@ async function showOverallActivity(apiUrl) {
                 name: 'Total',
                 color: '#a6cee3',
                 data: payload.data.activity.map((x) => {
-                    if (dataType === 'cores')
-                        return [x.timestamp, x[dataType]];
-                    return [x.timestamp, round(x[dataType] / 1024, 3)]
+                    return [x.timestamp, getY(x)];
                 }),
             }],
             tooltip: {
@@ -97,7 +121,7 @@ async function showOverallActivity(apiUrl) {
                     fontSize: '14px'
                 },
                 valueDecimals: 0,
-                valueSuffix: dataType === 'cores' ? undefined : ' TB'
+                valueSuffix: tooltipSuffix
             },
             xAxis: {
                 type: 'datetime',
@@ -110,7 +134,7 @@ async function showOverallActivity(apiUrl) {
             },
             yAxis: [{
                 title: {
-                    text: dataType === 'cores' ? 'Cores' : 'Memory (TB)'
+                    text: yAxisTitle
                 },
             }],
         });

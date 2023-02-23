@@ -132,23 +132,30 @@ async def get_overall_activity(days: int = settings.days):
         user_cores = {}
         user_memory = {}
         submitted_jobs = 0
+        completed_jobs = 0
+        failed_jobs = 0
         for user, values in users_data.items():
-            user_cores[user] = values[1]
-            user_memory[user] = values[2]
-            submitted_jobs += values[5]
+            user_cores[user] = values["cores"]
+            user_memory[user] = values["memory"]
+            submitted_jobs += values["submitted"]
+            completed_jobs += values["done"]
+            failed_jobs += values["failed"]
 
         activity.append({
             "timestamp": ts,
             "cores": sum(user_cores.values()),
             "memory": sum(user_memory.values()),
-            # "jobs_submitted": submitted_jobs
+            "jobs": {
+                "submitted": submitted_jobs,
+                "completed": completed_jobs,
+                "failed": failed_jobs
+            }
         })
 
-        if len(sliding_window) == 8:  # 8 * 15min: window of 2h
-            sliding_window.pop(0)
-
-        sliding_window.append((ts, user_cores, user_memory))
-
+        # if len(sliding_window) == 8:  # 8 * 15min: window of 2h
+        #     sliding_window.pop(0)
+        #
+        # sliding_window.append((ts, user_cores, user_memory))
         # find_events(sliding_window, core_events, mem_events, min_growth=1.5)
 
     con.close()
@@ -179,7 +186,8 @@ async def get_daily_team_footprint(days: int = settings.days):
             teams[team] = {
                 "name": team,
                 "co2e": 0,
-                "cost": 0
+                "cost": 0,
+                "cputime": 0
             }
 
     activity = []
@@ -200,8 +208,9 @@ async def get_daily_team_footprint(days: int = settings.days):
             _teams = {}
 
         for user, values in users_data.items():
-            co2e = values[3]
-            cost = values[4]
+            co2e = values["co2e"]
+            cost = values["cost"]
+            cpu_time = values["cputime"]
 
             try:
                 user_teams = user2teams[user]
@@ -212,6 +221,7 @@ async def get_daily_team_footprint(days: int = settings.days):
                 team_obj = teams[team]
                 team_obj["co2e"] += co2e / len(user_teams)
                 team_obj["cost"] += cost / len(user_teams)
+                team_obj["cputime"] += cpu_time / len(user_teams)
 
                 try:
                     _teams[team] += co2e / len(user_teams)
@@ -397,16 +407,16 @@ async def get_user_footprint(uuid: str, days: int = settings.days):
         except KeyError:
             cores = mem = 0
         else:
-            jobs += values[0]
-            cores = values[1]
-            mem = values[2]
-            co2e += values[3]
-            cost += values[4]
-            submitted += values[5]
-            done += values[6]
-            for i, v in enumerate(values[7]):
+            jobs += values["jobs"]
+            cores = values["cores"]
+            mem = values["memory"]
+            co2e += values["co2e"]
+            cost += values["cost"]
+            submitted += values["submitted"]
+            done += values["done"]
+            failed += values["failed"]
+            for i, v in enumerate(values["memeff"]):
                 memdist[i] += v
-            failed += values[9]
 
         activity.append({
             "timestamp": ts,
@@ -548,10 +558,10 @@ async def get_team_activity(uuid: str, team: str, days: int = settings.days):
             except KeyError:
                 continue
 
-            cores = values[1] / num_teams
-            memory = values[2] / num_teams
-            co2e = values[3] / num_teams
-            cost = values[4] / num_teams
+            cores = values["cores"] / num_teams
+            memory = values["memory"] / num_teams
+            co2e = values["co2e"] / num_teams
+            cost = values["cost"] / num_teams
 
             try:
                 user = users[login]
@@ -599,7 +609,7 @@ async def get_cpu_usage(days: int = settings.days):
 
     cpu_dist = [0] * 100
     for dt_str, ts, _, jobs_data in iter_usage(con, days):
-        for i, v in enumerate(jobs_data[2]):
+        for i, v in enumerate(jobs_data["cpueff"]):
             cpu_dist[i] += v
 
     con.close()
@@ -621,11 +631,11 @@ async def get_memory_usage(days: int = settings.days):
     co2e = cost = 0
     mem_dist = [0] * 100
     for dt_str, ts, _, jobs_data in iter_usage(con, days):
-        for i, v in enumerate(jobs_data[1]):
+        for i, v in enumerate(jobs_data["memeff"]["dist"]):
             mem_dist[i] += v
 
-        co2e += jobs_data[4]
-        cost += jobs_data[5]
+        co2e += jobs_data["memeff"]["co2e"]
+        cost += jobs_data["memeff"]["cost"]
 
     con.close()
 
@@ -661,7 +671,7 @@ async def get_runtimes(days: int = settings.days):
         ["&gt; 7 d", 0],
     ]
     for dt_str, ts, _, jobs_data in iter_usage(con, days):
-        for i, v in enumerate(jobs_data[3]):
+        for i, v in enumerate(jobs_data["runtimes"]):
             runtimes[i][1] += v
 
     con.close()
@@ -682,10 +692,10 @@ async def get_job_statuses(days: int = settings.days):
 
     done = failed = co2e = cost = 0
     for dt_str, ts, _, jobs_data in iter_usage(con, days):
-        done += jobs_data[0]
-        failed += jobs_data[6]
-        co2e += jobs_data[7]
-        cost += jobs_data[8]
+        done += jobs_data["done"]
+        failed += jobs_data["failed"]["count"]
+        co2e += jobs_data["failed"]["co2e"]
+        cost += jobs_data["failed"]["cost"]
 
     con.close()
 
@@ -724,10 +734,10 @@ def iter_usage(con: sqlite3.Connection, days: int, full_day: bool = False):
         else:
             start = floor2hour(start)
 
-        sql += " WHERE time >= ? AND time <= ?"
+        sql += " WHERE time >= ? AND time < ?"
         params = [start.strftime(dt_fmt), floor2hour(stop).strftime(dt_fmt)]
     else:
-        sql += " WHERE time <= ?"
+        sql += " WHERE time < ?"
         params = [floor2hour(stop).strftime(dt_fmt)]
 
     sql += " ORDER BY time"
