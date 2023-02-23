@@ -285,12 +285,14 @@ async function initUser(apiUrl, uuid, user) {
 
         userTeams.innerHTML = `
             <h5>Groups</h5>
-            <div class="col l12">
-                <ul class="tabs">
-                    ${listItems}
-                </ul>
+            <div class="row">
+                <div class="col l12">
+                    <ul class="tabs">
+                        ${listItems}
+                    </ul>
+                </div>
+                ${tabItems}            
             </div>
-            ${tabItems}
         `
     } else
         userTeams.innerHTML = '';
@@ -317,8 +319,8 @@ async function initUser(apiUrl, uuid, user) {
     document.getElementById('user-report').style.display = 'none';
     document.querySelector('#toc-wrapper ul ul').style.display = null;
     // startObserver();
-    resetScrollspy();
     M.Tabs.init(userTeams.querySelector('.tabs'));
+    resetScrollspy();
 }
 
 async function getUserActivity(apiUrl, uuid) {
