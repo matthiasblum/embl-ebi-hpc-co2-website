@@ -71,8 +71,10 @@ async function initApp(apiUrl, lastUpdated, contactEmail, contactSlack) {
     ];
 
     document.getElementById('contact-email').href = `mailto:${contactEmail}`;
-    if (contactSlack !== null) {
-        document.getElementById('contact-slack').innerHTML = ` or on <a href="${contactSlack}">Slack</a>`;
+    if (contactSlack !== null || 1) {
+        document.getElementById('contact-slack').innerHTML = ` 
+            or on <a href="${contactSlack}"><i class="fa-brands fa-slack"></i> Slack</a>
+        `;
     }
 
     await Promise.all(promises);

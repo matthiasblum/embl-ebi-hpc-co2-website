@@ -42,7 +42,6 @@ img.circle {
 /*    font-size: .9rem;*/
 /*}*/
 .card-panel {
-    border-left: 0.25rem solid #9e9e9e;
     padding: 1.25rem;
 }
 .card-panel > .card-title {
@@ -54,15 +53,15 @@ img.circle {
 }
 .card-panel.info {
     background-color: #e1f5fe;
-    border-left-color: #03a9f4;
+    border-left: 0.25rem solid #03a9f4;
 }
 .card-panel.warning {
     background-color: #fff8e1;
-    border-left-color: #ffc107;
+    border-left: 0.25rem solid #ffc107;
 }
 .card-panel.alert {
     background-color: #ffebee;
-    border-left-color: #f44336;
+    border-left: 0.25rem solid #f44336;
 }
 .card-panel > :first-child {
     margin-top: 0;
@@ -150,6 +149,9 @@ header {
     margin: 1rem 0 0;
     width: 100%;
     text-align: center;
+}
+#top-nav h1 i {
+    font-size: inherit;
 }
 header p {
     color: rgba(0, 0, 0, .5);
@@ -304,4 +306,20 @@ thead th.sortable.desc::after {
 #faq .question {
     font-weight: bold;
     display: block;
+}
+#summary .col i {
+    display: block;
+    font-size: 3rem;
+    margin-bottom: .5rem;
+}
+#summary .col span:not([data-stat]) {
+    font-size: 1.15rem;
+}
+#summary .col span[data-stat] {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+#contact-email, #contact-slack {
+    white-space: nowrap;
 }

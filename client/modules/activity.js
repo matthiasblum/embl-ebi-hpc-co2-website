@@ -1,11 +1,28 @@
 import {fetchTeamActivity} from "./team.js";
-import {round} from "./utils.js";
+import {renderCo2Emissions, renderCpuTime, round} from "./utils.js";
 
 async function showOverallActivity(apiUrl) {
     const response = await fetch(`${apiUrl}/activity/`);
     const payload = await response.json();
 
     document.querySelector('#activity .days').innerHTML = payload.meta.days;
+
+    document.querySelector('#activity [data-stat="cpu"]').innerHTML = `
+        ${renderCpuTime(payload.data.cputime)}
+    `;
+    document.querySelector('#activity [data-stat="co2e"]').innerHTML = `
+        ${renderCo2Emissions(payload.data.co2e, true)} CO<sub>2</sub>e
+    `;
+    // https://calculator.carbonfootprint.com/calculator.aspx?tab=3
+    const LondonToTokyo = 1410000;  // One way flight
+    document.querySelector('#activity [data-stat="flight"]').innerHTML = `
+        ${round(payload.data.co2e / LondonToTokyo, 1)} flights
+    `;
+    // https://www.eea.europa.eu/articles/forests-health-and-climate-change/key-facts/trees-help-tackle-climate-change
+    const offsetPerYear = 22000;
+    document.querySelector('#activity [data-stat="tree"]').innerHTML = `
+        ${round(payload.data.co2e / offsetPerYear, 1)} tree-years
+    `;
 
     const charts = [];
     let zoomedOnChartIndex = null;

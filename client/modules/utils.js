@@ -17,10 +17,12 @@ function renderCost(value) {
     return '&lt; £1';
 }
 
-function renderCo2Emissions(value) {
-    if (value >= 1e6)
+function renderCo2Emissions(value, useTonne) {
+    if (value >= 1e6) {
+        if (useTonne)
+            return round(value/1e6, 1).toLocaleString() + ' t';
         return round(value/1000, 0).toLocaleString() + ' kg';
-    else if (value >= 1000)
+    } else if (value >= 1000)
         return round(value/1000, 1).toLocaleString() + ' kg';
     else if (value >= 1)
         return round(value, 1).toLocaleString() + ' g';
@@ -41,4 +43,25 @@ function resetScrollspy() {
     });
 }
 
-export {round, getValue, renderCost, renderCo2Emissions, resetScrollspy};
+function renderCpuTime(seconds) {
+    const times = [
+        // unit, number of seconds, precision
+        ['year', 3600 * 24 * 365, 2],
+        ['month', 3600 * 24 * 30, 2],
+        ['week', 3600 * 24 * 7, 1],
+        ['day', 3600 * 24, 1],
+        ['hour', 3600, 0],
+        ['minute', 60, 0],
+    ]
+    const pluralize = (x => x >= 2 ? 's' : '');
+
+    for (const [unit, unitSeconds, precision] of times) {
+        if (seconds >= unitSeconds) {
+            const x = seconds / unitSeconds;
+            return `${round(x, precision)} ${unit}${pluralize(x)}`;
+        }
+    }
+    return `${round(seconds, 0)} second${pluralize(seconds)}`;
+}
+
+export {round, getValue, renderCost, renderCo2Emissions, resetScrollspy, renderCpuTime};

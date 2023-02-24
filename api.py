@@ -127,6 +127,7 @@ async def get_overall_activity(days: int = settings.days):
     sliding_window = []
     core_events = {}
     mem_events = {}
+    cpu_time = co2e = cost = 0
     con = sqlite3.connect(settings.database)
     for dt_str, ts, users_data, _ in iter_usage(con, days):
         user_cores = {}
@@ -140,6 +141,10 @@ async def get_overall_activity(days: int = settings.days):
             submitted_jobs += values["submitted"]
             completed_jobs += values["done"]
             failed_jobs += values["failed"]
+
+            co2e += values["co2e"]
+            cost += values["cost"]
+            cpu_time += values["cputime"]
 
         activity.append({
             "timestamp": ts,
@@ -167,6 +172,9 @@ async def get_overall_activity(days: int = settings.days):
                 "cores": filter_events(core_events),
                 "memory": filter_events(mem_events),
             },
+            "co2e": co2e,
+            "cost": cost,
+            "cputime": cpu_time
         },
         "meta": {
             "days": days

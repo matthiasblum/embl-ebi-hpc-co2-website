@@ -3,6 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <title>Carbon footprint @ EMBL-EBI</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.3.0/css/all.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@materializecss/materialize@1.1.0/dist/css/materialize.min.css">
         <link rel="stylesheet" href="styles.css">
         <link rel="icon" type="image/x-icon" href="https://www.ebi.ac.uk/favicon.ico">
@@ -31,7 +32,7 @@
         <section class="container">
             <header>
                 <nav id="top-nav">
-                    <h1>🌱 EMBL-EBI &ndash; Carbon footprint</h1>
+                    <h1><i class="fa-solid fa-seedling"></i> EMBL-EBI &ndash; Carbon footprint</h1>
                 </nav>
                 <p>
                     Last updated: <span id="last-updated"></span>
@@ -111,7 +112,7 @@
                             </tbody>
                         </table>
 
-                        <div class="card-panel warning">
+                        <div class="card-panel info">
                             <p>
                                 We built this tool in the hope to raise awareness of computing usage,
                                 highlight resources waste, and foster good computing practices.
@@ -124,17 +125,41 @@
                         <p>
                             Overall activity over the past <span class="days"></span> days.
                         </p>
-                        <div class="card-panel info">
-                            <p>
-                                LSF does not report the seconds of the start and completion times of jobs, therefore the minimum runtime is one minute.
-                                If many jobs are submitted, started, and completed within one minute, it will seem as if they were all running in parallel.
-                                This can lead to charts showing surges in resource consumption, even beyond the capacity of the cluster.
-                            </p>
+                        <div id="summary" class="card-panel">
+                            <div class="row center-align">
+                                <div class="col s3">
+                                    <i class="fa-solid fa-microchip"></i>
+                                    <span>CPU time</span>
+                                    <span data-stat="cpu" ></span>
+                                </div>
+                                <div class="col s3">
+                                    <i class="fa-solid fa-smog"></i>
+                                    <span>Carbon footprint</span>
+                                    <span data-stat="co2e" ></span>
+                                </div>
+                                <div class="col s3">
+                                    <i class="fa-solid fa-plane"></i>
+                                    <span>London &ndash; Tokyo</span>
+                                    <span data-stat="flight" ></span>
+                                </div>
+                                <div class="col s3">
+                                    <i class="fa-solid fa-tree"></i>
+                                    <span>Carbon sequestration</span>
+                                    <span data-stat="tree" ></span>
+                                </div>
+                            </div>
                         </div>
                         <div id="activity-charts">
                             <div id="jobs-activity"></div>
                             <div id="cores-activity"></div>
                             <div id="memory-activity"></div>
+                        </div>
+                        <div class="card-panel warning">
+                            <p>
+                                LSF does not report the seconds of the start and completion times of jobs, therefore the minimum runtime is one minute.
+                                If many jobs are submitted, started, and completed within one minute, it will seem as if they were all running in parallel.
+                                This can lead to charts showing surges in resource consumption, even beyond the capacity of the cluster.
+                            </p>
                         </div>
                     </div>
 
@@ -282,7 +307,7 @@
                         <h4>Contact</h4>
                         <p>
                             If you want to report a bug or a user assigned to the wrong team,
-                            request a feature, or just give some general feedback, you can contact me by <a id="contact-email">email</a><span id="contact-slack"></span>.
+                            request a feature, or just give some general feedback, you can contact me by <a id="contact-email"><i class="fa-solid fa-envelope"></i> email</a><span id="contact-slack"></span>.
                         </p>
                     </div>
                     <div id="faq" class="section scrollspy">
