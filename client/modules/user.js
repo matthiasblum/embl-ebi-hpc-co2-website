@@ -54,7 +54,12 @@ async function signIn(apiUrl, uuid) {
         return payload.meta;
 
     const error = payload.detail;
-    throw new Error(`${error.status} ${error.title}. ${error.detail}.`);
+    let errorMessage;
+    if (typeof error === 'object')
+        errorMessage = `${error.status} ${error.title}. ${error.detail}.`;
+    else
+        errorMessage = 'An unexpected error occurred.';
+    throw new Error(errorMessage);
 }
 
 async function signUp(apiUrl, email) {
