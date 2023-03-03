@@ -182,7 +182,12 @@
                                     <th>Group</th>
                                     <th>Carbon footprint</th>
                                     <th>Cost</th>
-                                    <th>Contribution</th>
+                                    <th>
+                                        Contribution
+                                        <i class="fa-solid fa-circle-question"
+                                           data-position="top"
+                                           data-tooltip="Contribution to the overall EMBL-EBI footprint"></i>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -340,6 +345,10 @@
                         <p>
                             <span class="question">Is there a public API?</span>
                             An interactive API documentation is available at <a id="openapi"></a>.
+                        </p>
+                        <p>
+                            <span class="question">Will this tool report the carbon footprint of Slurm jobs?</span>
+                            There is no plan to support Slurm. The compute team will provide monitoring tools.
                         </p>
                     </div>
                 </div>

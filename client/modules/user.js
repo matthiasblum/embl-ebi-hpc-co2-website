@@ -203,7 +203,12 @@ async function getUserReport(apiUrl, uuid, month) {
                     <th>Team</th>
                     <th>Carbon footprint</th>
                     <th>Cost</th>
-                    <th>Contribution</th>
+                    <th>
+                        Contribution
+                        <i class="fa-solid fa-circle-question"
+                           data-position="top"
+                           data-tooltip="Contribution to the overall EMBL-EBI footprint"></i>
+                    </th>
                 </tr>
             </thead>
             <tbody>${tbody}</tbody>
@@ -215,6 +220,7 @@ async function getUserReport(apiUrl, uuid, month) {
     plotMemoryDist(payload.data.memory, false, targetDiv.querySelector('.memory'));
 
     targetDiv.style.display = null;
+    M.Tooltip.init(targetDiv.querySelector('.fa-circle-question'), {});
 }
 
 async function initUser(apiUrl, uuid, user) {
@@ -278,7 +284,12 @@ async function initUser(apiUrl, uuid, user) {
                                 <th>Name</th>
                                 <th>Carbon footprint</th>
                                 <th>Cost</th>
-                                <th>Contribution</th>
+                                <th>
+                                    Contribution
+                                    <i class="fa-solid fa-circle-question"
+                                       data-position="top"
+                                       data-tooltip="Contribution to the team footprint"></i>
+                                </th>
                             </tr>                        
                         </thead>
                         <tbody></tbody>
@@ -298,7 +309,7 @@ async function initUser(apiUrl, uuid, user) {
                 </div>
                 ${tabItems}            
             </div>
-        `
+        `;
     } else
         userTeams.innerHTML = '';
 
@@ -325,6 +336,7 @@ async function initUser(apiUrl, uuid, user) {
     document.querySelector('#toc-wrapper ul ul').style.display = null;
     // startObserver();
     M.Tabs.init(userTeams.querySelector('.tabs'));
+    M.Tooltip.init(userTeams.querySelectorAll('.fa-circle-question'), {});
     resetScrollspy();
 }
 

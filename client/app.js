@@ -84,6 +84,7 @@ async function initApp(apiUrl, lastUpdated, contactEmail, contactSlack) {
         top: 150,
         offset: 0
     });
+    M.Tooltip.init(document.querySelectorAll('.fa-circle-question'), {});
 
     document.querySelector('#details > form')
         .addEventListener('submit', (event) => {
