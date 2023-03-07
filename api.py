@@ -1,14 +1,17 @@
 import json
+import math
 import sqlite3
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from email.utils import formatdate
-from math import floor
 from smtplib import SMTP
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, BaseSettings
+from pydantic import BaseModel, BaseSettings, Field
+
+
+DT_FMT = "%Y%m%d%H%M"
 
 
 class Settings(BaseSettings):
@@ -18,13 +21,13 @@ class Settings(BaseSettings):
     smtp_host: str
     smtp_port: int
     admin_slack: str = None
-    days: int = 14
+    days: int = Field(14, gt=0)
     notify_on_signup: bool = False
 
     class Config:
         @classmethod
         def parse_env_var(cls, field_name: str, raw_val: str):
-            if field_name == 'admin_email':
+            if field_name == "admin_email":
                 emails = []
                 for x in raw_val.split(','):
                     x = x.strip().lower()
@@ -121,15 +124,21 @@ async def root():
 
 
 @app.get("/activity/", tags=["Overall activity"])
-async def get_overall_activity(days: int = settings.days):
-    activity = []
+async def get_overall_activity(start: str | None = None,
+                               stop: str | None = None,
+                               days: int = settings.days):
+    con = sqlite3.connect(settings.database)
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2hour(start)
+    stop = floor2hour(stop)
 
+    activity = []
     sliding_window = []
     core_events = {}
     mem_events = {}
     cpu_time = co2e = cost = 0
-    con = sqlite3.connect(settings.database)
-    for dt_str, ts, users_data, _ in iter_usage(con, days):
+
+    for dt_str, ts, users_data, _ in iter_usage(con, start, stop):
         user_cores = {}
         user_memory = {}
         submitted_jobs = 0
@@ -177,14 +186,21 @@ async def get_overall_activity(days: int = settings.days):
             "cputime": cpu_time
         },
         "meta": {
-            "days": days
+            "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT)
         }
     }
 
 
 @app.get("/footprint/teams/", tags=["Teams carbon footprint"])
-async def get_daily_team_footprint(days: int = settings.days):
+async def get_daily_team_footprint(start: str | None = None,
+                                   stop: str | None = None,
+                                   days: int = settings.days):
     con = sqlite3.connect(settings.database)
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2day(start)
+    stop = floor2day(stop)
     user2teams = {}
     teams = {}
     for u in load_users(con):
@@ -201,7 +217,7 @@ async def get_daily_team_footprint(days: int = settings.days):
     activity = []
     _teams = {}
     day = day_ts = None
-    for dt_str, ts, users_data, _ in iter_usage(con, days, full_day=True):
+    for dt_str, ts, users_data, _ in iter_usage(con, start, stop):
         _day = dt_str[:8]
 
         if _day != day:
@@ -251,6 +267,8 @@ async def get_daily_team_footprint(days: int = settings.days):
         },
         "meta": {
             "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT)
         }
     }
 
@@ -401,15 +419,20 @@ async def sign_up(user: User):
 
 
 @app.get("/user/{uuid}/footprint/", tags=["User footprint"])
-async def get_user_footprint(uuid: str, days: int = settings.days):
+async def get_user_footprint(uuid: str, start: str | None = None,
+                             stop: str | None = None,
+                             days: int = settings.days):
     con = sqlite3.connect(settings.database)
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2hour(start)
+    stop = floor2hour(stop)
     user = get_user(con, uuid)
     username = user["login"]
 
     activity = []
     jobs = submitted = done = failed = co2e = cost = 0
     memdist = [0] * 5
-    for dt_str, ts, users_data, _ in iter_usage(con, days):
+    for dt_str, ts, users_data, _ in iter_usage(con, start, stop):
         try:
             values = users_data[username]
         except KeyError:
@@ -446,6 +469,8 @@ async def get_user_footprint(uuid: str, days: int = settings.days):
         },
         "meta": {
             "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT)
         }
     }
 
@@ -523,8 +548,14 @@ async def get_user_report(uuid: str, month: str):
 
 
 @app.get("/user/{uuid}/team/{team:path}/", tags=["Team activity"])
-async def get_team_activity(uuid: str, team: str, days: int = settings.days):
+async def get_team_activity(uuid: str, team: str,
+                            start: str | None = None,
+                            stop: str | None = None,
+                            days: int = settings.days):
     con = sqlite3.connect(settings.database)
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2hour(start)
+    stop = floor2hour(stop)
     user = get_user(con, uuid)
     if team not in user["teams"]:
         raise HTTPException(status_code=401, detail={
@@ -545,7 +576,7 @@ async def get_team_activity(uuid: str, team: str, days: int = settings.days):
     footprint_per_day = []
     users = {}
     day = day_ts = None
-    for dt_str, ts, users_data, _ in iter_usage(con, days, full_day=True):
+    for dt_str, ts, users_data, _ in iter_usage(con, start, stop):
         _day = dt_str[:8]
 
         if _day != day:
@@ -606,17 +637,23 @@ async def get_team_activity(uuid: str, team: str, days: int = settings.days):
         },
         "meta": {
             "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT),
             "users": team_users
         }
     }
 
 
 @app.get("/distribution/cpu/", tags=["CPU"])
-async def get_cpu_usage(days: int = settings.days):
+async def get_cpu_usage(start: str | None = None,
+                        stop: str | None = None,
+                        days: int = settings.days):
     con = sqlite3.connect(settings.database)
-
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2hour(start)
+    stop = floor2hour(stop)
     cpu_dist = [0] * 100
-    for dt_str, ts, _, jobs_data in iter_usage(con, days):
+    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
         for i, v in enumerate(jobs_data["cpueff"]):
             cpu_dist[i] += v
 
@@ -627,18 +664,24 @@ async def get_cpu_usage(days: int = settings.days):
             "dist": cpu_dist,
         },
         "meta": {
-            "days": days
+            "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT)
         }
     }
 
 
 @app.get("/distribution/memory/", tags=["Memory"])
-async def get_memory_usage(days: int = settings.days):
+async def get_memory_usage(start: str | None = None,
+                           stop: str | None = None,
+                           days: int = settings.days):
     con = sqlite3.connect(settings.database)
-
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2hour(start)
+    stop = floor2hour(stop)
     co2e = cost = 0
     mem_dist = [0] * 100
-    for dt_str, ts, _, jobs_data in iter_usage(con, days):
+    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
         for i, v in enumerate(jobs_data["memeff"]["dist"]):
             mem_dist[i] += v
 
@@ -656,15 +699,21 @@ async def get_memory_usage(days: int = settings.days):
             }
         },
         "meta": {
-            "days": days
+            "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT)
         }
     }
 
 
 @app.get("/distribution/runtime/", tags=["Runtimes"])
-async def get_runtimes(days: int = settings.days):
+async def get_runtimes(start: str | None = None,
+                       stop: str | None = None,
+                       days: int = settings.days):
     con = sqlite3.connect(settings.database)
-
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2hour(start)
+    stop = floor2hour(stop)
     runtimes = [
         ["&le; 1 min", 0],
         ["1 - 10 min", 0],
@@ -678,7 +727,7 @@ async def get_runtimes(days: int = settings.days):
         ["3 - 7 d", 0],
         ["&gt; 7 d", 0],
     ]
-    for dt_str, ts, _, jobs_data in iter_usage(con, days):
+    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
         for i, v in enumerate(jobs_data["runtimes"]):
             runtimes[i][1] += v
 
@@ -689,17 +738,23 @@ async def get_runtimes(days: int = settings.days):
             "dist": runtimes,
         },
         "meta": {
-            "days": days
+            "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT)
         }
     }
 
 
 @app.get("/statuses/", tags=["Statuses"])
-async def get_job_statuses(days: int = settings.days):
+async def get_job_statuses(start: str | None = None,
+                           stop: str | None = None,
+                           days: int = settings.days):
     con = sqlite3.connect(settings.database)
-
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2hour(start)
+    stop = floor2hour(stop)
     done = failed = co2e = cost = 0
-    for dt_str, ts, _, jobs_data in iter_usage(con, days):
+    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
         done += jobs_data["done"]
         failed += jobs_data["failed"]["count"]
         co2e += jobs_data["failed"]["co2e"]
@@ -719,7 +774,9 @@ async def get_job_statuses(days: int = settings.days):
             }
         },
         "meta": {
-            "days": days
+            "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT)
         }
     }
 
@@ -730,29 +787,17 @@ def get_last_update(con: sqlite3.Connection) -> datetime:
     return datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
 
 
-def iter_usage(con: sqlite3.Connection, days: int, full_day: bool = False):
-    stop = get_last_update(con)
-
-    sql = "SELECT time, users_data, jobs_data FROM usage"
-    dt_fmt = "%Y%m%d%H%M"
-    if days > 0:
-        start = stop - timedelta(days=days)
-        if full_day:
-            start = floor2day(start)
-        else:
-            start = floor2hour(start)
-
-        sql += " WHERE time >= ? AND time < ?"
-        params = [start.strftime(dt_fmt), floor2hour(stop).strftime(dt_fmt)]
-    else:
-        sql += " WHERE time < ?"
-        params = [floor2hour(stop).strftime(dt_fmt)]
-
-    sql += " ORDER BY time"
-
+def iter_usage(con: sqlite3.Connection, start: datetime, stop: datetime):
+    sql = """
+        SELECT time, users_data, jobs_data 
+        FROM usage
+        WHERE time >= ? AND time < ?
+        ORDER BY time
+    """
+    params = [start.strftime(DT_FMT), stop.strftime(DT_FMT)]
     for row in con.execute(sql, params):
         dt_str = row[0]
-        ts = floor(datetime.strptime(dt_str, dt_fmt).timestamp()) * 1000
+        ts = math.floor(strptime(dt_str).timestamp()) * 1000
         yield dt_str, ts, json.loads(row[1]), json.loads(row[2])
 
 
@@ -845,3 +890,36 @@ def load_users(con: sqlite3.Connection) -> list[dict]:
         })
 
     return data
+
+
+def strptime(s: str) -> datetime:
+    return datetime.strptime(s, "%Y%m%d%H%M")
+
+
+def get_interval(con: sqlite3.Connection, start: str | None, stop: str | None,
+                 days: int) -> tuple[datetime, datetime]:
+    if start and stop:
+        try:
+            start = strptime(start)
+        except ValueError:
+            raise HTTPException(status_code=400, detail={
+                "status": "400",
+                "title": "Bad Request",
+                "detail": "'start' query parameter has an invalid time format "
+                          "(expected: YYYYMMDDHHMM)"
+            })
+
+        try:
+            stop = strptime(stop)
+        except ValueError:
+            raise HTTPException(status_code=400, detail={
+                "status": "400",
+                "title": "Bad Request",
+                "detail": "'stop' query parameter has an invalid time format "
+                          "(expected: YYYYMMDDHHMM)"
+            })
+    else:
+        stop = get_last_update(con)
+        start = stop - timedelta(days=days)
+
+    return start, stop
