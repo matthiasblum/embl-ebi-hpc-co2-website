@@ -200,7 +200,7 @@ async def get_daily_team_footprint(start: str | None = None,
     con = sqlite3.connect(settings.database)
     start, stop = get_interval(con, start, stop, days)
     start = floor2day(start)
-    stop = floor2day(stop)
+    stop = floor2hour(stop)
     user2teams = {}
     teams = {}
     for u in load_users(con):
