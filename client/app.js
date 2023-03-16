@@ -145,16 +145,17 @@ async function plotJobStatuses(apiUrl) {
     const response = await fetch(`${apiUrl}/statuses/`);
     const payload = await response.json();
 
-    document.querySelector('#status .count').innerHTML = (payload.data.jobs.done + payload.data.jobs.exit).toLocaleString();
+    document.querySelector('#status .count').innerHTML = (payload.data.done + payload.data.exit.total).toLocaleString();
     document.querySelector('#status .days').innerHTML = payload.meta.days;
-    document.querySelector('#status .co2-wasted').innerHTML = `${renderCo2Emissions(payload.data.wasted.co2e)} CO<sub>2</sub>e`;
-    document.querySelector('#status .cost-wasted').innerHTML = renderCost(payload.data.wasted.cost);
+    document.querySelector('#status .co2-wasted').innerHTML = `${renderCo2Emissions(payload.data.exit.co2e)} CO<sub>2</sub>e`;
+    document.querySelector('#status .cost-wasted').innerHTML = renderCost(payload.data.exit.cost);
 
     Highcharts.chart('status-chart', {
         chart: {
             plotBackgroundColor: null,
             plotBorderWidth: 0,
-            plotShadow: false
+            plotShadow: false,
+            marginTop: -150,
         },
         tooltip: {
             headerFormat: '',
@@ -165,8 +166,8 @@ async function plotJobStatuses(apiUrl) {
             pie: {
                 startAngle: -90,
                 endAngle: 90,
-                center: ['50%', '75%'],
-                size: '110%'
+                center: ['50%', '100%'],
+                size: '100%'
             }
         },
         series: [{
@@ -175,17 +176,17 @@ async function plotJobStatuses(apiUrl) {
             innerSize: '50%',
             data: [{
                 name: 'Done',
-                y: payload.data.jobs.done,
+                y: payload.data.done,
                 color: '#4caf50',
             }, {
-                name: 'Failed',
-                y: payload.data.jobs.exit,
-                color: '#f44336',
-            }/*, {
-                name: 'Others',
-                y: payload.data.jobs.total - payload.data.jobs.done - payload.data.jobs.exit,
-                color: '#9e9e9e',
-            }*/]
+                name: 'Failed (mem limit)',
+                y: payload.data.exit.memlim,
+                color: '#E74C3C',
+            }, {
+                name: 'Failed (other)',
+                y: payload.data.exit.total - payload.data.exit.memlim,
+                color: '#C0392B',
+            }]
         }]
     });
 }

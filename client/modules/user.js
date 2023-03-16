@@ -504,9 +504,13 @@ async function getUserActivity(apiUrl, uuid) {
                 color: '#21ba45',
                 y: payload.data.done
             }, {
-                name: 'Failed',
+                name: 'Failed (mem. limit)',
                 color: '#db2828',
-                y: payload.data.exit
+                y: payload.data.memlim
+            }, {
+                name: 'Failed (other)',
+                color: '#db2828',
+                y: payload.data.exit.total - payload.data.exit.memlim
             }]
         }]
     });
