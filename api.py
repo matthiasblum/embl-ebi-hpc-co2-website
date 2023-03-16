@@ -12,6 +12,10 @@ from pydantic import BaseModel, BaseSettings, Field
 
 
 DT_FMT = "%Y%m%d%H%M"
+# Runtime labels
+RUNTIMES = ["&le; 1 min", "1 - 10 min", "10 min - 1 h", "1 - 3 h", "3 - 6 h",
+            "6 - 12 h", "12 h - 1 d", "1 - 2 d", "2 - 3 d", "3 - 7 d",
+            "&gt; 7 d"]
 
 
 class Settings(BaseSettings):
@@ -149,7 +153,7 @@ async def get_overall_activity(start: str | None = None,
             user_memory[user] = values["memory"]
             submitted_jobs += values["submitted"]
             completed_jobs += values["done"]
-            failed_jobs += values["failed"]
+            failed_jobs += values["failed"]["total"]
 
             co2e += values["co2e"]
             cost += values["cost"]
@@ -430,7 +434,7 @@ async def get_user_footprint(uuid: str, start: str | None = None,
     username = user["login"]
 
     activity = []
-    jobs = submitted = done = failed = co2e = cost = 0
+    jobs = submitted = done = failed = memlim = co2e = cost = 0
     memdist = [0] * 5
     for dt_str, ts, users_data, _ in iter_usage(con, start, stop):
         try:
@@ -445,7 +449,8 @@ async def get_user_footprint(uuid: str, start: str | None = None,
             cost += values["cost"]
             submitted += values["submitted"]
             done += values["done"]
-            failed += values["failed"]
+            failed += values["failed"]["total"]
+            memlim += values["failed"]["memlim"]
             for i, v in enumerate(values["memeff"]):
                 memdist[i] += v
 
@@ -461,7 +466,10 @@ async def get_user_footprint(uuid: str, start: str | None = None,
         "data": {
             "jobs": round(jobs),
             "done": done,
-            "exit": failed,
+            "exit": {
+                "total": failed,
+                "memlim": memlim,
+            },
             "co2e": co2e,
             "cost": cost,
             "activity": activity,
@@ -714,19 +722,7 @@ async def get_runtimes(start: str | None = None,
     start, stop = get_interval(con, start, stop, days)
     start = floor2hour(start)
     stop = floor2hour(stop)
-    runtimes = [
-        ["&le; 1 min", 0],
-        ["1 - 10 min", 0],
-        ["10 min - 1 h", 0],
-        ["1 - 3 h", 0],
-        ["3 - 6 h", 0],
-        ["6 - 12 h", 0],
-        ["12 h - 1 d", 0],
-        ["1 - 2 d", 0],
-        ["2 - 3 d", 0],
-        ["3 - 7 d", 0],
-        ["&gt; 7 d", 0],
-    ]
+    runtimes = [[label, 0] for label in RUNTIMES]
     for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
         for i, v in enumerate(jobs_data["runtimes"]):
             runtimes[i][1] += v
@@ -753,25 +749,34 @@ async def get_job_statuses(start: str | None = None,
     start, stop = get_interval(con, start, stop, days)
     start = floor2hour(start)
     stop = floor2hour(stop)
-    done = failed = co2e = cost = 0
-    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
+    done = failed = memlim = co2e = wasted_co2e = wasted_cost = 0
+    runtimes = [[label, 0] for label in RUNTIMES]
+    for dt_str, ts, users_data, jobs_data in iter_usage(con, start, stop):
+        for values in users_data.values():
+            co2e += values["co2e"]
+
         done += jobs_data["done"]
-        failed += jobs_data["failed"]["count"]
-        co2e += jobs_data["failed"]["co2e"]
-        cost += jobs_data["failed"]["cost"]
+        failed += jobs_data["failed"]["total"]
+        memlim += jobs_data["failed"]["memlim"]
+        wasted_co2e += jobs_data["failed"]["co2e"]
+        wasted_cost += jobs_data["failed"]["cost"]
+
+        for i, v in enumerate(jobs_data["failed"]["runtimes"]):
+            runtimes[i][1] += v
 
     con.close()
 
     return {
         "data": {
-            "jobs": {
-                "done": done,
-                "exit": failed
+            "co2e": co2e,
+            "done": done,
+            "exit": {
+                "total": failed,
+                "co2e": wasted_co2e,
+                "cost": wasted_cost,
+                "runtimes": runtimes,
+                "memlim": memlim,
             },
-            "wasted": {
-                "co2e": co2e,
-                "cost": cost
-            }
         },
         "meta": {
             "days": days,
