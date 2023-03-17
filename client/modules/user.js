@@ -477,10 +477,10 @@ async function getUserActivity(apiUrl, uuid) {
     Highcharts.chart(document.querySelector('#user-status > div'), {
         chart: {
             height: 250,
-            margin: [0, 0, -50, 0],
+            margin: [-75, 0, -20, 0],
             plotBackgroundColor: null,
             plotBorderWidth: 0,
-            plotShadow: false
+            plotShadow: false,
         },
         tooltip: {
             headerFormat: '',
@@ -491,8 +491,8 @@ async function getUserActivity(apiUrl, uuid) {
             pie: {
                 startAngle: -90,
                 endAngle: 90,
-                center: ['50%', '75%'],
-                size: '110%'
+                center: ['50%', '90%'],
+                size: '100%'
             }
         },
         series: [{
@@ -501,15 +501,15 @@ async function getUserActivity(apiUrl, uuid) {
             innerSize: '50%',
             data: [{
                 name: 'Done',
-                color: '#21ba45',
+                color: '#2ECC71',
                 y: payload.data.done
             }, {
                 name: 'Failed (mem. limit)',
-                color: '#db2828',
-                y: payload.data.memlim
+                color: '#E74C3C',
+                y: payload.data.exit.memlim
             }, {
                 name: 'Failed (other)',
-                color: '#db2828',
+                color: '#C0392B',
                 y: payload.data.exit.total - payload.data.exit.memlim
             }]
         }]

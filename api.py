@@ -662,7 +662,7 @@ async def get_cpu_usage(start: str | None = None,
     stop = floor2hour(stop)
     cpu_dist = [0] * 100
     for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
-        for i, v in enumerate(jobs_data["cpueff"]):
+        for i, v in enumerate(jobs_data["done"]["cpueff"]):
             cpu_dist[i] += v
 
     con.close()
@@ -690,11 +690,11 @@ async def get_memory_usage(start: str | None = None,
     co2e = cost = 0
     mem_dist = [0] * 100
     for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
-        for i, v in enumerate(jobs_data["memeff"]["dist"]):
+        for i, v in enumerate(jobs_data["done"]["memeff"]["dist"]):
             mem_dist[i] += v
 
-        co2e += jobs_data["memeff"]["co2e"]
-        cost += jobs_data["memeff"]["cost"]
+        co2e += jobs_data["done"]["memeff"]["co2e"]
+        cost += jobs_data["done"]["memeff"]["cost"]
 
     con.close()
 
@@ -724,7 +724,7 @@ async def get_runtimes(start: str | None = None,
     stop = floor2hour(stop)
     runtimes = [[label, 0] for label in RUNTIMES]
     for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
-        for i, v in enumerate(jobs_data["runtimes"]):
+        for i, v in enumerate(jobs_data["done"]["runtimes"]):
             runtimes[i][1] += v
 
     con.close()
@@ -749,33 +749,33 @@ async def get_job_statuses(start: str | None = None,
     start, stop = get_interval(con, start, stop, days)
     start = floor2hour(start)
     stop = floor2hour(stop)
-    done = failed = memlim = co2e = wasted_co2e = wasted_cost = 0
-    runtimes = [[label, 0] for label in RUNTIMES]
-    for dt_str, ts, users_data, jobs_data in iter_usage(con, start, stop):
-        for values in users_data.values():
-            co2e += values["co2e"]
-
-        done += jobs_data["done"]
+    done = co2e = failed = memlim = wasted_co2e = wasted_cost = 0
+    more1h = more1h_co2e = 0
+    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
+        done += jobs_data["done"]["total"]
+        co2e += jobs_data["done"]["co2e"]
         failed += jobs_data["failed"]["total"]
-        memlim += jobs_data["failed"]["memlim"]
         wasted_co2e += jobs_data["failed"]["co2e"]
         wasted_cost += jobs_data["failed"]["cost"]
-
-        for i, v in enumerate(jobs_data["failed"]["runtimes"]):
-            runtimes[i][1] += v
+        memlim += jobs_data["failed"]["memlim"]
+        more1h += jobs_data["failed"]["more1h"]["total"]
+        more1h_co2e += jobs_data["failed"]["more1h"]["co2e"]
 
     con.close()
 
     return {
         "data": {
-            "co2e": co2e,
-            "done": done,
+            "done": {
+                "total": done,
+                "co2e": co2e,
+            },
             "exit": {
                 "total": failed,
                 "co2e": wasted_co2e,
                 "cost": wasted_cost,
-                "runtimes": runtimes,
                 "memlim": memlim,
+                "more1h": more1h,
+                "more1hCo2e": more1h_co2e
             },
         },
         "meta": {

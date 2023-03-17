@@ -7,7 +7,12 @@ import {
 import {API_URL, SIGN_IN_KEY} from "./modules/settings.js";
 import {showTeamsFootprint} from "./modules/team.js";
 import {switchSignForm, signIn, initUser, signOut} from "./modules/user.js";
-import {renderCost, renderCo2Emissions, resetScrollspy} from "./modules/utils.js";
+import {
+    renderCost,
+    renderCo2Emissions,
+    resetScrollspy,
+    round
+} from "./modules/utils.js";
 
 Highcharts.setOptions({
     chart: {
@@ -144,18 +149,26 @@ async function initApp(apiUrl, lastUpdated, contactEmail, contactSlack) {
 async function plotJobStatuses(apiUrl) {
     const response = await fetch(`${apiUrl}/statuses/`);
     const payload = await response.json();
-
-    document.querySelector('#status .count').innerHTML = (payload.data.done + payload.data.exit.total).toLocaleString();
+    document.querySelector('#status .count').innerHTML = (payload.data.done.total + payload.data.exit.total).toLocaleString();
     document.querySelector('#status .days').innerHTML = payload.meta.days;
-    document.querySelector('#status .co2-wasted').innerHTML = `${renderCo2Emissions(payload.data.exit.co2e)} CO<sub>2</sub>e`;
-    document.querySelector('#status .cost-wasted').innerHTML = renderCost(payload.data.exit.cost);
+
+    const wastedCo2Pc = payload.data.exit.co2e * 100 / (payload.data.done.co2e + payload.data.exit.co2e);
+    const more1hPc = payload.data.exit.more1h * 100 / payload.data.exit.total;
+    const more1hCo2ePc = payload.data.exit.more1hCo2e * 100 / (payload.data.done.co2e + payload.data.exit.co2e);
+    document.querySelector('#status-info').innerHTML = `
+        Failed jobs represent ${renderCo2Emissions(payload.data.exit.co2e)} of CO<sub>2</sub>e and a cost of ${renderCost(payload.data.exit.cost)}. 
+        They are responsible for ${wastedCo2Pc.toFixed(1)}% of the overall carbon footprint.<br>
+        ${more1hPc.toFixed(1)}% of failed jobs ran for at least an hour before failing, and are 
+        reponsible for ${more1hCo2ePc.toFixed(1)}% of the overall carbon footprint.
+    `;
 
     Highcharts.chart('status-chart', {
         chart: {
+            height: 250,
+            margin: [-75, 0, -20, 0],
             plotBackgroundColor: null,
             plotBorderWidth: 0,
             plotShadow: false,
-            marginTop: -150,
         },
         tooltip: {
             headerFormat: '',
@@ -166,7 +179,7 @@ async function plotJobStatuses(apiUrl) {
             pie: {
                 startAngle: -90,
                 endAngle: 90,
-                center: ['50%', '100%'],
+                center: ['50%', '90%'],
                 size: '100%'
             }
         },
@@ -176,16 +189,16 @@ async function plotJobStatuses(apiUrl) {
             innerSize: '50%',
             data: [{
                 name: 'Done',
-                y: payload.data.done,
-                color: '#4caf50',
+                color: '#2ECC71',
+                y: payload.data.done.total,
             }, {
-                name: 'Failed (mem limit)',
-                y: payload.data.exit.memlim,
+                name: 'Failed (mem. limit)',
                 color: '#E74C3C',
+                y: payload.data.exit.memlim
             }, {
                 name: 'Failed (other)',
-                y: payload.data.exit.total - payload.data.exit.memlim,
                 color: '#C0392B',
+                y: payload.data.exit.total - payload.data.exit.memlim
             }]
         }]
     });
