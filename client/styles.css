@@ -323,3 +323,15 @@ thead th.sortable.desc::after {
 #contact-email, #contact-slack {
     white-space: nowrap;
 }
+
+.histobar {
+    height: 15px;
+    width: 152px;
+    display: flex;
+    margin: .5em 0;
+    border-radius: 2px;
+    border: 1px solid #ccc;
+}
+.histobar > * {
+    position: relative;
+}

@@ -13,7 +13,16 @@ async function showTeamFootprint(apiUrl, userId, uuid, team, elemId) {
     let users = new Map(
         Object
             .entries(payload.meta.users)
-            .map(([login, name]) => [login, {id: login, name: name, co2e: 0, cost: 0}])
+            .map(([login, name]) => [
+                login,
+                {
+                    id: login,
+                    name: name,
+                    co2e: 0,
+                    cost: 0,
+                    dists: payload.data.dists[login]
+                }
+            ])
     );
     let totalEmissions = 0;
     payload.data.footprint.forEach((item) => {
@@ -120,6 +129,57 @@ async function showTeamFootprint(apiUrl, userId, uuid, team, elemId) {
                     return contribution >= 0.1 ? contribution.toFixed(2) + '%' : '&lt; 0.1%';
                 }
             },
+            {
+                data: 'dists',
+                searchable: false,
+                orderable: false,
+                render: function (dists) {
+                    let total, max, delta;
+                    const memdist = dists.memory;
+                    total = memdist.reduce((p, c) => p + c);
+
+                    memdist.forEach((n, i) => {
+                        memdist[i] = Math.floor(n * 100 / total);
+                    });
+
+                    max = Math.max(...memdist);
+                    delta = 100 - max;
+
+                    if (delta > 0) {
+                        const i = memdist.indexOf(max);
+                        memdist[i] += delta;
+                    }
+
+                    const statdist = dists.status;
+                    total = statdist[0] + statdist[1];
+
+                    statdist.forEach((n, i) => {
+                        statdist[i] = Math.floor(n * 100 / total);
+                    });
+
+                    max = Math.max(...memdist);
+                    delta = 100 - max;
+
+                    if (delta > 0) {
+                        const i = statdist.indexOf(max);
+                        statdist[i] += delta;
+                    }
+
+                    return `
+                        <div class="histobar">
+                            <div style="width: ${memdist[0]}%; background-color: #f44336;"></div>
+                            <div style="width: ${memdist[1]}%; background-color: #ff9800;"></div>
+                            <div style="width: ${memdist[2]}%; background-color: #cddc39;"></div>
+                            <div style="width: ${memdist[3]}%; background-color: #8bc34a;"></div>
+                            <div style="width: ${memdist[4]}%; background-color: #4caf50;"></div>
+                        </div>
+                        <div class="histobar">
+                            <div style="width: ${statdist[0]}%; background-color: #4caf50;"></div>
+                            <div style="width: ${statdist[1]}%; background-color: #f44336;"></div>
+                        </div>
+                    `;
+                }
+            }
         ],
         data: users,
         orderBy: 0

@@ -290,6 +290,7 @@ async function initUser(apiUrl, uuid, user) {
                                        data-position="top"
                                        data-tooltip="Contribution to the team footprint"></i>
                                 </th>
+                                <th>Dist</th>
                             </tr>                        
                         </thead>
                         <tbody></tbody>

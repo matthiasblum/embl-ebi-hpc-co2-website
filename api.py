@@ -575,10 +575,15 @@ async def get_team_activity(uuid: str, team: str,
 
     team_users = {}
     teams_per_user = {}
+    dists = {}
     for u in load_users(con):
         if team in u["teams"]:
             team_users[u["id"]] = u["name"]
             teams_per_user[u["id"]] = len(u["teams"])
+            dists[u["id"]] = {
+                "memory": [0] * 5,
+                "status": [0, 0]
+            }
 
     activity = []
     footprint_per_day = []
@@ -605,6 +610,7 @@ async def get_team_activity(uuid: str, team: str,
             except KeyError:
                 continue
 
+            num_teams = 1  # TODO: remove?
             cores = values["cores"] / num_teams
             memory = values["memory"] / num_teams
             co2e = values["co2e"] / num_teams
@@ -615,20 +621,27 @@ async def get_team_activity(uuid: str, team: str,
             except KeyError:
                 user = users[login] = {
                     "co2e": 0,
-                    "cost": 0,
+                    "cost": 0
                 }
 
             user["co2e"] += co2e
             user["cost"] += cost
 
+            obj = dists[login]
+            for i, v in enumerate(values["memeff"]):
+                obj["memory"][i] += v / num_teams
+
+            obj["status"][0] += values["done"]
+            obj["status"][1] += values["failed"]["total"]
+
             ts_cores += cores
             ts_memory += memory
 
-        activity.append({
-            "timestamp": ts,
-            "cores": ts_cores,
-            "memory": ts_memory,
-        })
+        # activity.append({
+        #     "timestamp": ts,
+        #     "cores": ts_cores,
+        #     "memory": ts_memory,
+        # })
 
     if day_ts is not None:
         footprint_per_day.append({
@@ -640,8 +653,9 @@ async def get_team_activity(uuid: str, team: str,
 
     return {
         "data": {
-            "activity": activity,
+            # "activity": activity,
             "footprint": footprint_per_day,
+            "dists": dists
         },
         "meta": {
             "days": days,
