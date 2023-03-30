@@ -157,7 +157,7 @@ async function showTeamFootprint(apiUrl, userId, uuid, team, elemId) {
                         statdist[i] = Math.floor(n * 100 / total);
                     });
 
-                    max = Math.max(...memdist);
+                    max = Math.max(...statdist);
                     delta = 100 - max;
 
                     if (delta > 0) {
