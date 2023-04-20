@@ -200,11 +200,11 @@ async function showOverallActivity(apiUrl) {
                     memData.push([value.timestamp, round(value.memory / 1024, 3)]);
                 });
 
-                charts[0].addSeries({
+                charts[1].addSeries({
                     data: coresData,
                     color: '#f44336'
                 });
-                charts[1].addSeries({
+                charts[2].addSeries({
                     data: memData,
                     color: '#f44336'
                 });
