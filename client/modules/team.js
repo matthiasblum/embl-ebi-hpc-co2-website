@@ -1,5 +1,6 @@
 import {Table} from "./table.js";
 import {renderCo2Emissions, renderCost, round} from "./utils.js";
+import {TIMEZONE_OFFSET_MIN} from "./settings.js";
 
 async function fetchTeamActivity(apiUrl, uuid, team) {
     const response = await fetch(`${apiUrl}/user/${uuid}/team/${encodeURIComponent(team)}/`);
@@ -66,6 +67,9 @@ async function showTeamFootprint(apiUrl, userId, uuid, team, elemId) {
         chart: {
             type: 'area',
             height: 300,
+        },
+        time: {
+            timezoneOffset: TIMEZONE_OFFSET_MIN
         },
         xAxis: {
             type: 'datetime',
@@ -238,6 +242,9 @@ async function showTeamsFootprint(apiUrl) {
             type: 'area',
             height: 300,
             zoomType: 'x'
+        },
+        time: {
+            timezoneOffset: TIMEZONE_OFFSET_MIN
         },
         xAxis: {
             type: 'datetime',
