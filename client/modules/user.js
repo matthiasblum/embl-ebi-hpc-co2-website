@@ -214,6 +214,7 @@ async function getUserReport(apiUrl, uuid, month) {
             <tbody>${tbody}</tbody>
         </table>
         <h6>Memory efficiency</h6>
+        <p>Only jobs with a memory request of at least 4GB were considered.</p>
         <div class="memory"></div>
     `;
 

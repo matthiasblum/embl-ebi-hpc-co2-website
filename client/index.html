@@ -19,9 +19,9 @@
                                     <div class="circle"></div>
                                 </div><div class="gap-patch">
                                 <div class="circle"></div>
-                            </div><div class="circle-clipper right">
-                                <div class="circle"></div>
-                            </div>
+                                </div><div class="circle-clipper right">
+                                    <div class="circle"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -46,7 +46,7 @@
                             <li><a href="#intro">Introduction</a></li>
                             <li><a href="#activity">Activity</a></li>
                             <li><a href="#groups">Groups</a></li>
-                            <!--                            <li><a href="#users">Users</a></li>-->
+                            <!--<li><a href="#users">Users</a></li>-->
                             <li><a href="#memory">Memory</a></li>
                             <li><a href="#cpu">CPU</a></li>
                             <li><a href="#runtime">Runtime</a></li>
@@ -200,7 +200,8 @@
                             Memory can be a significant source of waste, because the power draw from memory mainly depends
                             on the memory available, not the actual memory used.
                             The chart below shows the distribution of the memory efficiency
-                            collected from <span class="count"></span> jobs with a memory request that successfully
+                            collected from <span class="count"></span> jobs with a memory request
+                            of at least 4GB that successfully
                             completed in the past <span class="days"></span> days.
                         </p>
                         <div id="memdist-chart"></div>
@@ -294,6 +295,7 @@
                         </div>
                         <div id="user-memory" class="scrollspy">
                             <h5>Memory efficiency of recent successful jobs</h5>
+                            <p>Only jobs with a memory request of at least 4GB are considered.</p>
                             <div></div>
                         </div>
                         <div id="user-status" class="scrollspy">
