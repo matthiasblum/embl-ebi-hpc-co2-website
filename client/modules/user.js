@@ -185,7 +185,7 @@ async function getUserReport(apiUrl, uuid, month) {
                     <tr>
                         <td class="details" colspan="4">
                             <span>
-                                There are ${users.length} member${users.length > 1 ? 's' : ''} 
+                                There ${users.length > 1 ? 'are' : 'is'} ${users.length} member${users.length > 1 ? 's' : ''} 
                                 of this team with a significant carbon footprint:
                             </span>
                             <table class="celled">
