@@ -63,7 +63,7 @@ tags = [
     },
     {
         "name": "Teams carbon footprint",
-        "description": "Get the carbon footprint per team."
+        "description": "Get the overall and daily carbon footprint per team."
     },
     {
         "name": "Memory",
@@ -574,14 +574,14 @@ async def get_user_report(uuid: str, month: str):
             "name": team,
             "co2e": data["co2e"] / len(user["teams"]),
             "cost": data["cost"] / len(user["teams"]),
+            "users": []
         }
+
+    users = {u["id"]: u["name"] for u in load_users(con)}
 
     # Other team members
     team_members = {}
     for u in load_users(con):
-        if u["id"] == username:
-            continue
-
         for team in u["teams"]:
             if team in teams:
                 try:
@@ -606,12 +606,33 @@ async def get_user_report(uuid: str, month: str):
         obj = team_members[login]
 
         for team in obj["teams"]:
+            teams[team]["users"].append({
+                "id": login,
+                "name": users[login],
+                "co2e": user_data["co2e"] / obj["divisor"],
+                "cost": user_data["cost"] / obj["divisor"],
+                # used to filter users
+                "_co2e": user_data["co2e"],
+                "_cost": user_data["cost"],
+            })
             teams[team]["co2e"] += user_data["co2e"] / obj["divisor"]
             teams[team]["cost"] += user_data["cost"] / obj["divisor"]
 
     con.close()
 
-    data["teams"] = sorted(teams.values(), key=lambda x: x["name"])
+    total_co2e = data["totalCo2e"]
+    data["teams"] = []
+
+    for team in sorted(teams.values(), key=lambda x: x["name"]):
+        users = []
+        for user in sorted(team["users"], key=lambda x: -x["_co2e"]):
+            co2e = user.pop("_co2e")
+            cost = user.pop("cost")
+            if co2e / total_co2e >= 0.01:
+                users.append(user)
+
+        team["users"] = users
+        data["teams"].append(team)
 
     return {
         "data": data,
