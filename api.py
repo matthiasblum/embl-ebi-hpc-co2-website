@@ -43,6 +43,10 @@ class Settings(BaseSettings):
             return cls.json_loads(raw_val)
 
 
+class User(BaseModel):
+    email: str
+
+
 settings = Settings()
 tags = [
     {
@@ -277,24 +281,137 @@ async def get_daily_team_footprint(start: str | None = None,
     }
 
 
-def get_user(con: sqlite3.Connection, uuid: str) -> dict:
-    row = con.execute("SELECT login, name, teams, position, photo_url "
-                      "FROM user WHERE uuid = ?", [uuid]).fetchone()
-    if row is None:
-        con.close()
-        if row is None:
-            raise HTTPException(status_code=401, detail={
-                "status": "401",
-                "title": "Unauthorized",
-                "detail": "Invalid UUID"
-            })
+@app.get("/distribution/cpu/", tags=["CPU"])
+async def get_cpu_usage(start: str | None = None,
+                        stop: str | None = None,
+                        days: int = settings.days):
+    con = sqlite3.connect(settings.database)
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2hour(start)
+    stop = floor2hour(stop)
+    cpu_dist = [0] * 100
+    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
+        for i, v in enumerate(jobs_data["done"]["cpueff"]):
+            cpu_dist[i] += v
+
+    con.close()
 
     return {
-        "login": row[0],
-        "name": row[1],
-        "teams": sorted(json.loads(row[2])),
-        "position": row[3],
-        "photoUrl": row[4]
+        "data": {
+            "dist": cpu_dist,
+        },
+        "meta": {
+            "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT)
+        }
+    }
+
+
+@app.get("/distribution/memory/", tags=["Memory"])
+async def get_memory_usage(start: str | None = None,
+                           stop: str | None = None,
+                           days: int = settings.days):
+    con = sqlite3.connect(settings.database)
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2hour(start)
+    stop = floor2hour(stop)
+    co2e = cost = 0
+    mem_dist = [0] * 100
+    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
+        for i, v in enumerate(jobs_data["done"]["memeff"]["dist"]):
+            mem_dist[i] += v
+
+        co2e += jobs_data["done"]["memeff"]["co2e"]
+        cost += jobs_data["done"]["memeff"]["cost"]
+
+    con.close()
+
+    return {
+        "data": {
+            "dist": mem_dist,
+            "wasted": {
+                "co2e": co2e,
+                "cost": cost,
+            }
+        },
+        "meta": {
+            "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT)
+        }
+    }
+
+
+@app.get("/distribution/runtime/", tags=["Runtimes"])
+async def get_runtimes(start: str | None = None,
+                       stop: str | None = None,
+                       days: int = settings.days):
+    con = sqlite3.connect(settings.database)
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2hour(start)
+    stop = floor2hour(stop)
+    runtimes = [[label, 0] for label in RUNTIMES]
+    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
+        for i, v in enumerate(jobs_data["done"]["runtimes"]):
+            runtimes[i][1] += v
+
+    con.close()
+
+    return {
+        "data": {
+            "dist": runtimes,
+        },
+        "meta": {
+            "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT)
+        }
+    }
+
+
+@app.get("/statuses/", tags=["Statuses"])
+async def get_job_statuses(start: str | None = None,
+                           stop: str | None = None,
+                           days: int = settings.days):
+    con = sqlite3.connect(settings.database)
+    start, stop = get_interval(con, start, stop, days)
+    start = floor2hour(start)
+    stop = floor2hour(stop)
+    done = co2e = failed = memlim = wasted_co2e = wasted_cost = 0
+    more1h = more1h_co2e = 0
+    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
+        done += jobs_data["done"]["total"]
+        co2e += jobs_data["done"]["co2e"]
+        failed += jobs_data["failed"]["total"]
+        wasted_co2e += jobs_data["failed"]["co2e"]
+        wasted_cost += jobs_data["failed"]["cost"]
+        memlim += jobs_data["failed"]["memlim"]
+        more1h += jobs_data["failed"]["more1h"]["total"]
+        more1h_co2e += jobs_data["failed"]["more1h"]["co2e"]
+
+    con.close()
+
+    return {
+        "data": {
+            "done": {
+                "total": done,
+                "co2e": co2e,
+            },
+            "exit": {
+                "total": failed,
+                "co2e": wasted_co2e,
+                "cost": wasted_cost,
+                "memlim": memlim,
+                "more1h": more1h,
+                "more1hCo2e": more1h_co2e
+            },
+        },
+        "meta": {
+            "days": days,
+            "start": start.strftime(DT_FMT),
+            "stop": stop.strftime(DT_FMT)
+        }
     }
 
 
@@ -317,57 +434,6 @@ async def sign_in(uuid: str):
     return {
         "meta": user
     }
-
-
-class User(BaseModel):
-    email: str
-
-
-def send_email(login: str, recipient: str, to_email: str, uuid: str):
-    content = f"""\
-Dear {recipient},
-
-You, or someone else, requested the UUID for {login}.
-
-It allows you to find out the recent activity and carbon footprint of {login}.
-
-The UUID is: {uuid}
-
-(This is an automated email)
-    """
-
-    msg = EmailMessage()
-    msg["Subject"] = f"EMBL-EBI carbon footprint: UUID reminder for {login}"
-    msg["To"] = to_email
-    msg["From"] = settings.admin_email[0]
-    msg["Date"] = formatdate(localtime=True)
-    msg.set_content(content)
-
-    admin_email = settings.admin_email[0]
-
-    with SMTP(host=settings.smtp_host, port=settings.smtp_port) as server:
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(admin_email.split('@')[0], settings.admin_password)
-        server.send_message(msg)
-
-        if settings.notify_on_signup:
-            msg = EmailMessage()
-            msg["Subject"] = (f"EMBL-EBI carbon footprint: "
-                              f"UUID requested for {login}")
-            msg["To"] = admin_email
-            msg["From"] = admin_email
-            msg["Date"] = formatdate(localtime=True)
-            msg.set_content(
-                f"""\
-Someone asked for a UUID reminder:
-User: {login}
-Name: {recipient}
-                """
-            )
-
-            server.send_message(msg)
 
 
 @app.post("/user/", tags=["Sign up"])
@@ -652,168 +718,6 @@ async def get_team_activity(uuid: str, team: str,
     }
 
 
-@app.get("/distribution/cpu/", tags=["CPU"])
-async def get_cpu_usage(start: str | None = None,
-                        stop: str | None = None,
-                        days: int = settings.days):
-    con = sqlite3.connect(settings.database)
-    start, stop = get_interval(con, start, stop, days)
-    start = floor2hour(start)
-    stop = floor2hour(stop)
-    cpu_dist = [0] * 100
-    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
-        for i, v in enumerate(jobs_data["done"]["cpueff"]):
-            cpu_dist[i] += v
-
-    con.close()
-
-    return {
-        "data": {
-            "dist": cpu_dist,
-        },
-        "meta": {
-            "days": days,
-            "start": start.strftime(DT_FMT),
-            "stop": stop.strftime(DT_FMT)
-        }
-    }
-
-
-@app.get("/distribution/memory/", tags=["Memory"])
-async def get_memory_usage(start: str | None = None,
-                           stop: str | None = None,
-                           days: int = settings.days):
-    con = sqlite3.connect(settings.database)
-    start, stop = get_interval(con, start, stop, days)
-    start = floor2hour(start)
-    stop = floor2hour(stop)
-    co2e = cost = 0
-    mem_dist = [0] * 100
-    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
-        for i, v in enumerate(jobs_data["done"]["memeff"]["dist"]):
-            mem_dist[i] += v
-
-        co2e += jobs_data["done"]["memeff"]["co2e"]
-        cost += jobs_data["done"]["memeff"]["cost"]
-
-    con.close()
-
-    return {
-        "data": {
-            "dist": mem_dist,
-            "wasted": {
-                "co2e": co2e,
-                "cost": cost,
-            }
-        },
-        "meta": {
-            "days": days,
-            "start": start.strftime(DT_FMT),
-            "stop": stop.strftime(DT_FMT)
-        }
-    }
-
-
-@app.get("/distribution/runtime/", tags=["Runtimes"])
-async def get_runtimes(start: str | None = None,
-                       stop: str | None = None,
-                       days: int = settings.days):
-    con = sqlite3.connect(settings.database)
-    start, stop = get_interval(con, start, stop, days)
-    start = floor2hour(start)
-    stop = floor2hour(stop)
-    runtimes = [[label, 0] for label in RUNTIMES]
-    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
-        for i, v in enumerate(jobs_data["done"]["runtimes"]):
-            runtimes[i][1] += v
-
-    con.close()
-
-    return {
-        "data": {
-            "dist": runtimes,
-        },
-        "meta": {
-            "days": days,
-            "start": start.strftime(DT_FMT),
-            "stop": stop.strftime(DT_FMT)
-        }
-    }
-
-
-@app.get("/statuses/", tags=["Statuses"])
-async def get_job_statuses(start: str | None = None,
-                           stop: str | None = None,
-                           days: int = settings.days):
-    con = sqlite3.connect(settings.database)
-    start, stop = get_interval(con, start, stop, days)
-    start = floor2hour(start)
-    stop = floor2hour(stop)
-    done = co2e = failed = memlim = wasted_co2e = wasted_cost = 0
-    more1h = more1h_co2e = 0
-    for dt_str, ts, _, jobs_data in iter_usage(con, start, stop):
-        done += jobs_data["done"]["total"]
-        co2e += jobs_data["done"]["co2e"]
-        failed += jobs_data["failed"]["total"]
-        wasted_co2e += jobs_data["failed"]["co2e"]
-        wasted_cost += jobs_data["failed"]["cost"]
-        memlim += jobs_data["failed"]["memlim"]
-        more1h += jobs_data["failed"]["more1h"]["total"]
-        more1h_co2e += jobs_data["failed"]["more1h"]["co2e"]
-
-    con.close()
-
-    return {
-        "data": {
-            "done": {
-                "total": done,
-                "co2e": co2e,
-            },
-            "exit": {
-                "total": failed,
-                "co2e": wasted_co2e,
-                "cost": wasted_cost,
-                "memlim": memlim,
-                "more1h": more1h,
-                "more1hCo2e": more1h_co2e
-            },
-        },
-        "meta": {
-            "days": days,
-            "start": start.strftime(DT_FMT),
-            "stop": stop.strftime(DT_FMT)
-        }
-    }
-
-
-def get_last_update(con: sqlite3.Connection) -> datetime:
-    time, = con.execute("SELECT value FROM metadata "
-                        "WHERE key = 'jobs'").fetchone()
-    return datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
-
-
-def iter_usage(con: sqlite3.Connection, start: datetime, stop: datetime):
-    sql = """
-        SELECT time, users_data, jobs_data 
-        FROM usage
-        WHERE time >= ? AND time < ?
-        ORDER BY time
-    """
-    params = [start.strftime(DT_FMT), stop.strftime(DT_FMT)]
-    for row in con.execute(sql, params):
-        dt_str = row[0]
-        ts = math.floor(strptime(dt_str).timestamp()) * 1000
-        yield dt_str, ts, json.loads(row[1]), json.loads(row[2])
-
-
-def floor2hour(dt: datetime) -> datetime:
-    return datetime(dt.year, dt.month, dt.day, dt.hour)
-
-
-def floor2day(dt: datetime) -> datetime:
-    return datetime(dt.year, dt.month, dt.day)
-
-
 def filter_events(events: dict, min_interval_ms: int = 1 * 3600 * 1000):
     main_events = []
     for e in sorted(events.values(), key=lambda e: -e["delta"]):
@@ -884,21 +788,12 @@ def find_events(windows: list[tuple[int, dict, dict]], cores_events: dict,
             }
 
 
-def load_users(con: sqlite3.Connection) -> list[dict]:
-    data = []
-    for row in con.execute("SELECT login, name, teams, photo_url FROM user"):
-        data.append({
-            "id": row[0],
-            "name": row[1],
-            "teams": json.loads(row[2]),
-            "photoUrl": row[3]
-        })
-
-    return data
+def floor2hour(dt: datetime) -> datetime:
+    return datetime(dt.year, dt.month, dt.day, dt.hour)
 
 
-def strptime(s: str) -> datetime:
-    return datetime.strptime(s, "%Y%m%d%H%M")
+def floor2day(dt: datetime) -> datetime:
+    return datetime(dt.year, dt.month, dt.day)
 
 
 def get_interval(con: sqlite3.Connection, start: str | None, stop: str | None,
@@ -928,3 +823,108 @@ def get_interval(con: sqlite3.Connection, start: str | None, stop: str | None,
         start = stop - timedelta(days=days)
 
     return start, stop
+
+
+def get_last_update(con: sqlite3.Connection) -> datetime:
+    time, = con.execute("SELECT value FROM metadata "
+                        "WHERE key = 'jobs'").fetchone()
+    return datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
+
+
+def get_user(con: sqlite3.Connection, uuid: str) -> dict:
+    row = con.execute("SELECT login, name, teams, position, photo_url "
+                      "FROM user WHERE uuid = ?", [uuid]).fetchone()
+    if row is None:
+        con.close()
+        if row is None:
+            raise HTTPException(status_code=401, detail={
+                "status": "401",
+                "title": "Unauthorized",
+                "detail": "Invalid UUID"
+            })
+
+    return {
+        "login": row[0],
+        "name": row[1],
+        "teams": sorted(json.loads(row[2])),
+        "position": row[3],
+        "photoUrl": row[4]
+    }
+
+
+def iter_usage(con: sqlite3.Connection, start: datetime, stop: datetime):
+    sql = """
+        SELECT time, users_data, jobs_data 
+        FROM usage
+        WHERE time >= ? AND time < ?
+        ORDER BY time
+    """
+    params = [start.strftime(DT_FMT), stop.strftime(DT_FMT)]
+    for row in con.execute(sql, params):
+        dt_str = row[0]
+        ts = math.floor(strptime(dt_str).timestamp()) * 1000
+        yield dt_str, ts, json.loads(row[1]), json.loads(row[2])
+
+
+def load_users(con: sqlite3.Connection) -> list[dict]:
+    data = []
+    for row in con.execute("SELECT login, name, teams, photo_url FROM user"):
+        data.append({
+            "id": row[0],
+            "name": row[1],
+            "teams": json.loads(row[2]),
+            "photoUrl": row[3]
+        })
+
+    return data
+
+
+def strptime(s: str) -> datetime:
+    return datetime.strptime(s, "%Y%m%d%H%M")
+
+
+def send_email(login: str, recipient: str, to_email: str, uuid: str):
+    content = f"""\
+Dear {recipient},
+
+You, or someone else, requested the UUID for {login}.
+
+It allows you to find out the recent activity and carbon footprint of {login}.
+
+The UUID is: {uuid}
+
+(This is an automated email)
+    """
+
+    msg = EmailMessage()
+    msg["Subject"] = f"EMBL-EBI carbon footprint: UUID reminder for {login}"
+    msg["To"] = to_email
+    msg["From"] = settings.admin_email[0]
+    msg["Date"] = formatdate(localtime=True)
+    msg.set_content(content)
+
+    admin_email = settings.admin_email[0]
+
+    with SMTP(host=settings.smtp_host, port=settings.smtp_port) as server:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(admin_email.split('@')[0], settings.admin_password)
+        server.send_message(msg)
+
+        if settings.notify_on_signup:
+            msg = EmailMessage()
+            msg["Subject"] = (f"EMBL-EBI carbon footprint: "
+                              f"UUID requested for {login}")
+            msg["To"] = admin_email
+            msg["From"] = admin_email
+            msg["Date"] = formatdate(localtime=True)
+            msg.set_content(
+                f"""\
+Someone asked for a UUID reminder:
+User: {login}
+Name: {recipient}
+                """
+            )
+
+            server.send_message(msg)
