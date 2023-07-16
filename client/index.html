@@ -19,9 +19,9 @@
                                     <div class="circle"></div>
                                 </div><div class="gap-patch">
                                 <div class="circle"></div>
-                                </div><div class="circle-clipper right">
-                                    <div class="circle"></div>
-                                </div>
+                            </div><div class="circle-clipper right">
+                                <div class="circle"></div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -44,6 +44,7 @@
                     <div id="toc-wrapper">
                         <ul class="section table-of-contents">
                             <li><a href="#intro">Introduction</a></li>
+                            <li><a href="#overview">Overview</a></li>
                             <li><a href="#activity">Activity</a></li>
                             <li><a href="#groups">Groups</a></li>
                             <!--<li><a href="#users">Users</a></li>-->
@@ -119,6 +120,19 @@
                                 This is intended to be a lightweight carbon footprint calculator, not a cluster monitoring system.
                             </p>
                         </div>
+                    </div>
+                    <div id="overview" class="section scrollspy">
+                        <h4>Overview</h4>
+                        <p>
+                            Overall carbon footprint over the past <span class="months"></span> months.
+                            Use the range below to change the number of groups to display.
+                        </p>
+                        <form action="#">
+                            <p class="range-field">
+                                <input type="range" min="0" max="10" value="0" />
+                            </p>
+                        </form>
+                        <div id="overview-chart"></div>
                     </div>
                     <div id="activity" class="section scrollspy">
                         <h4>Activity</h4>

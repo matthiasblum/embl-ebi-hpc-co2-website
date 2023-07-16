@@ -1,7 +1,103 @@
 import {fetchTeamActivity} from "./team.js";
 import {renderCo2Emissions, renderCpuTime, round} from "./utils.js";
 
+function updateOverallChart(categories, data, nSeries) {
+    const series = data.slice(0, nSeries);
+    const others = {
+        name: nSeries > 0 ? 'Others' : 'EMBL-EBI',
+        data: new Array(categories.length).fill(0),
+        color: '#607d8b',
+    };
+
+
+    data
+        .slice(nSeries)
+        .forEach((team) => {
+            team.data.forEach((v, i) => {
+                others.data[i] += v;
+            });
+        });
+
+    series.push(others);
+
+    Highcharts.chart('overview-chart', {
+        chart: {
+            type: 'column',
+            height: 400
+        },
+        tooltip: {
+            formatter: function() {
+                let value;
+                if (this.y > 1)
+                    value = `${round(this.y, 2)} t`;
+                else
+                    value = `${round(this.y * 1000, 0)} kg`;
+
+                return `
+                    <span style="font-size: 11px">${this.series.name}</span><br>
+                    CO<sub>2</sub>e: <strong>${value}</strong>
+                `;
+            }
+        },
+        plotOptions: {
+            column: {
+                stacking: 'normal',
+            }
+        },
+        series: series,
+        xAxis: {
+            type: 'category',
+            categories: categories
+        },
+        yAxis: {
+            title: {
+                text: 'Tonnes CO<sub>2</sub>-equivalent',
+                useHTML: true
+            },
+            reversedStacks: true
+        },
+        legend: { enabled: true },
+    });
+}
+
 async function showOverallActivity(apiUrl) {
+    const response = await fetch(`${apiUrl}/footprint/`);
+    const payload = await response.json();
+
+    let teams = new Map();
+
+    payload.data.forEach(({month, footprint}, i, array) => {
+        footprint.forEach(({team, jobs, cputime, co2e, cost}) => {
+            if (!teams.has(team)) {
+                teams.set(team, {
+                    name: team,
+                    data: new Array(array.length).fill(0),
+                    total: 0
+                });
+            }
+
+            const teamObj = teams.get(team);
+            teamObj.data[i] = co2e / 1e6;
+            teamObj.total += co2e;
+        });
+    });
+
+    const categories = payload.data.map(({month}) => month);
+    teams = [...teams.values()].sort((a, b) => b.total - a.total);
+
+    const inputRange = document.querySelector('#overview input[type="range"]');
+    const nSeries = Number.parseInt(inputRange.value, 0);
+
+    updateOverallChart(categories, teams, nSeries);
+
+    document.querySelector('#overview .months').innerHTML = payload.meta.months;
+
+    inputRange.addEventListener('change', (e,) => {
+        updateOverallChart(categories, teams, Number.parseInt(e.currentTarget.value, 10));
+    });
+}
+
+async function showRecentActivity(apiUrl) {
     const response = await fetch(`${apiUrl}/activity/`);
     const payload = await response.json();
 
@@ -212,4 +308,4 @@ async function showOverallActivity(apiUrl) {
     };
 }
 
-export {showOverallActivity};
+export {showOverallActivity, showRecentActivity};

@@ -1,4 +1,4 @@
-import {showOverallActivity} from "./modules/activity.js";
+import {showOverallActivity, showRecentActivity} from "./modules/activity.js";
 import {
     showCPUDist,
     showRuntimes,
@@ -10,8 +10,7 @@ import {switchSignForm, signIn, initUser, signOut} from "./modules/user.js";
 import {
     renderCost,
     renderCo2Emissions,
-    resetScrollspy,
-    round
+    resetScrollspy
 } from "./modules/utils.js";
 
 Highcharts.setOptions({
@@ -68,6 +67,7 @@ async function initApp(apiUrl, lastUpdated, contactEmail, contactSlack) {
 
     const promises = [
         showOverallActivity(apiUrl),
+        showRecentActivity(apiUrl),
         showTeamsFootprint(apiUrl),
         showMemoryDist(apiUrl),
         showCPUDist(apiUrl),

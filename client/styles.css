@@ -114,11 +114,11 @@ pre {
     color: #333;
     z-index: 99999;
 }
-input:not(.browser-default):focus:not([readonly]):not(.invalid) {
+input:not(.browser-default):focus:not([readonly]):not(.invalid):not([type="range"]) {
     border-bottom: 1px solid #3489ca !important;
     box-shadow: 0 1px 0 0 #3489ca !important;
 }
-input:not(.browser-default):focus:not([readonly]):not(.invalid) + label {
+input:not(.browser-default):focus:not([readonly]):not(.invalid):not([type="range"]) + label {
     color: #3489ca !important;
 }
 .custom.blue { background-color: #3489ca !important; }
@@ -337,4 +337,7 @@ table.celled {
 }
 table.celled > thead > tr > th, table.celled > tbody > tr > td {
     border: 1px solid #ddd;
+}
+input[type="range"] {
+    max-width: 300px;
 }
