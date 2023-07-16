@@ -156,32 +156,48 @@ async function getUserReport(apiUrl, uuid, month) {
     else if (i === 3 && j !== 13)
         suffix = 'rd';
 
-    let contribution = payload.data.contribution * 100;
-    if (contribution < 0.01)
-        contribution = '&lt; 0.01';
-    else
-        contribution = round(contribution, 2);
-
-    let totalCo2e = null;
-    if (payload.data.contribution > 0)
-        totalCo2e = payload.data.co2e / payload.data.contribution;
-
     let tbody = payload.data.teams
-        .map(({name, co2e, cost}) => {
-            let contribution = 'N/A';
-            if (totalCo2e !== null) {
-                contribution = co2e * 100 / totalCo2e;
-                contribution = contribution >= 0.1 ? contribution.toFixed(2) + '%' : '&lt; 0.1%';
-            }
+        .map(({name, co2e, cost, users}) => {
+            let contribution = co2e * 100 / payload.data.totalCo2e;
+            contribution = contribution >= 0.1 ? contribution.toFixed(2) + '%' : '&lt; 0.1%';
 
-            return `
+            let content = `
                 <tr>
                     <td>${name}</td>
-                    <td>${renderCo2Emissions(co2e) + ' CO<sub>2</sub>e'}</td>
+                    <td>${renderCo2Emissions(co2e)} CO<sub>2</sub>e</td>
                     <td>${renderCost(cost)}</td>
                     <td>${contribution}</td>
                 </tr>
             `;
+
+            if (users.length !== 0) {
+                const tbody = users
+                    .map(({name, co2e, cost}) => `
+                        <tr>
+                            <td>${name}</td>
+                            <td>${renderCo2Emissions(co2e)} CO<sub>2</sub>e</td>
+                            <td>${renderCost(cost)}</td>
+                        </tr>
+                    `)
+                    .join('');
+
+                content += `
+                    <tr>
+                        <td class="details" colspan="4">
+                            <span>
+                                There are ${users.length} member${users.length > 1 ? 's' : ''} 
+                                of this team with a significant carbon footprint:
+                            </span>
+                            <table class="celled">
+                                <thead><tr><th>Name</th><th>Carbon footprint</th><th>Cost</th></tr></thead>
+                                <tbody>${tbody}</tbody>
+                            </table>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            return content;
         })
         .join('');
 
@@ -189,14 +205,25 @@ async function getUserReport(apiUrl, uuid, month) {
         tbody = '<tr><td colspan="4">No data</td></tr>'
     }
 
+    let contribution = payload.data.co2e / payload.data.totalCo2e * 100;
+    if (contribution < 0.01)
+        contribution = '&lt; 0.01';
+    else
+        contribution = round(contribution, 2);
+
     targetDiv.innerHTML = `
         <p>
             In ${payload.meta.month}, your ${payload.data.jobs.total.toLocaleString()} 
             jobs emmited <b>${renderCo2Emissions(payload.data.co2e)} of CO<sub>2</sub></b> 
             for an estimated cost of <b>${renderCost(payload.data.cost)}</b>.
-            You ranked <b>${payload.data.rank}${suffix}</b> among all users and you are responsible for <b>${contribution}%</b> of the overall carbon footprint.<br>
-            The footprint of the teams you belong to is displayed in the table below.
+            You ranked <b>${payload.data.rank}${suffix}</b> among all users and 
+            you are responsible for <b>${contribution}%</b> of the overall carbon footprint.
         </p>
+        <h6>Memory efficiency</h6>
+        <p>Only jobs with a memory request of at least 4GB were considered.</p>
+        <div class="memory"></div>
+        <h6>Teams</h6>
+        <p>The footprint of the teams you belong to is displayed in the table below.</p>
         <table>
             <thead>
                 <tr>
@@ -212,10 +239,7 @@ async function getUserReport(apiUrl, uuid, month) {
                 </tr>
             </thead>
             <tbody>${tbody}</tbody>
-        </table>
-        <h6>Memory efficiency</h6>
-        <p>Only jobs with a memory request of at least 4GB were considered.</p>
-        <div class="memory"></div>
+        </table>        
     `;
 
     plotMemoryDist(payload.data.memory, false, targetDiv.querySelector('.memory'));
@@ -334,7 +358,7 @@ async function initUser(apiUrl, uuid, user) {
     document.querySelector('#details > form').style.display = 'none';
     document.getElementById('user-details').style.display = null;
     document.getElementById('user-report').style.display = 'none';
-    document.querySelector('#toc-wrapper ul ul').style.display = null;
+    document.querySelector('#toc-wrapper a[href="#details"] + ul').style.display = null;
     // startObserver();
     M.Tabs.init(userTeams.querySelector('.tabs'));
     M.Tooltip.init(userTeams.querySelectorAll('.fa-circle-question'), {});

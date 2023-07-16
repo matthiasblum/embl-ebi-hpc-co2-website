@@ -323,3 +323,18 @@ thead th.sortable.desc::after {
 #contact-email, #contact-slack {
     white-space: nowrap;
 }
+
+td.details {
+    font-size: .85em;
+}
+
+table td.collapsing {
+    width: 1px;
+    white-space: nowrap;
+}
+table.celled {
+    margin-top: .5em;
+}
+table.celled > thead > tr > th, table.celled > tbody > tr > td {
+    border: 1px solid #ddd;
+}
