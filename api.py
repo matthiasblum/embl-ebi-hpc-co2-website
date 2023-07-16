@@ -62,6 +62,10 @@ tags = [
         "description": "Get the recent activity of a specific team.",
     },
     {
+        "name": "Monthly carbon footprint",
+        "description": "Get the monthly carbon footprint."
+    },
+    {
         "name": "Teams carbon footprint",
         "description": "Get the overall and daily carbon footprint per team."
     },
@@ -197,6 +201,55 @@ async def get_overall_activity(start: str | None = None,
             "days": days,
             "start": start.strftime(DT_FMT),
             "stop": stop.strftime(DT_FMT)
+        }
+    }
+
+
+@app.get("/footprint/", tags=["Monthly carbon footprint"])
+async def get_monthly_footprint(months: int = 6):
+    con = sqlite3.connect(settings.database)
+    dt = get_last_update(con)
+    stop = datetime(dt.year, dt.month, 1)
+    month = stop.month - months
+    year = stop.year
+
+    while month < 1:
+        month += 12
+        year -= 1
+
+    data = []
+
+    dt = start = datetime(year, month, 1)
+    while dt < stop:
+        row = con.execute(
+            "SELECT data FROM report WHERE login = ? AND month = ?",
+            ["_", dt.strftime("%Y-%m")]
+        ).fetchone()
+
+        if not row:
+            break
+
+        teams = []
+        for team in sorted(json.loads(row[0]), key=lambda x: x["team"]):
+            team["jobs"] = math.floor(team["jobs"])
+            teams.append(team)
+
+        data.append({
+            "month": dt.strftime("%B %Y"),
+            "footprint": teams
+        })
+
+        if dt.month < 12:
+            dt = datetime(dt.year, dt.month + 1, 1)
+        else:
+            dt = datetime(dt.year + 1, 1, 1)
+
+    return {
+        "data": data,
+        "meta": {
+            "months": months,
+            "start": start.strftime("%B %Y"),
+            "stop": stop.strftime("%B %Y")
         }
     }
 
