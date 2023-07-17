@@ -172,9 +172,9 @@ async function getUserReport(apiUrl, uuid, month) {
 
             if (users.length !== 0) {
                 const tbody = users
-                    .map(({name, co2e, cost, success}) => `
+                    .map(({id, name, co2e, cost, success}) => `
                         <tr>
-                            <td>${name}</td>
+                            <td>${name || id}</td>
                             <td>${renderCo2Emissions(co2e)} CO<sub>2</sub>e</td>
                             <td>${renderCost(cost)}</td>
                             <td>${round(success, 1)}%</td>
