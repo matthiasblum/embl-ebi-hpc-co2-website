@@ -659,6 +659,12 @@ async def get_user_report(uuid: str, month: str):
         obj = team_members[login]
 
         for team in obj["teams"]:
+            jobs = user_data["jobs"]
+            try:
+                rate = jobs["done"] / jobs["total"] * 100
+            except ZeroDivisionError:
+                rate = None
+
             teams[team]["users"].append({
                 "id": login,
                 "name": users[login],
@@ -667,6 +673,7 @@ async def get_user_report(uuid: str, month: str):
                 # used to filter users
                 "_co2e": user_data["co2e"],
                 "_cost": user_data["cost"],
+                "success": rate
             })
             teams[team]["co2e"] += user_data["co2e"] / obj["divisor"]
             teams[team]["cost"] += user_data["cost"] / obj["divisor"]

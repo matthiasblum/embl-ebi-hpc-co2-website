@@ -172,11 +172,12 @@ async function getUserReport(apiUrl, uuid, month) {
 
             if (users.length !== 0) {
                 const tbody = users
-                    .map(({name, co2e, cost}) => `
+                    .map(({name, co2e, cost, success}) => `
                         <tr>
                             <td>${name}</td>
                             <td>${renderCo2Emissions(co2e)} CO<sub>2</sub>e</td>
                             <td>${renderCost(cost)}</td>
+                            <td>${round(success, 1)}%</td>
                         </tr>
                     `)
                     .join('');
@@ -189,7 +190,14 @@ async function getUserReport(apiUrl, uuid, month) {
                                 of this group with a significant carbon footprint:
                             </span>
                             <table class="celled">
-                                <thead><tr><th>Name</th><th>Carbon footprint</th><th>Cost</th></tr></thead>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Carbon footprint</th>
+                                        <th>Cost</th>
+                                        <th>Success rate</th>
+                                    </tr>
+                                </thead>
                                 <tbody>${tbody}</tbody>
                             </table>
                         </td>
