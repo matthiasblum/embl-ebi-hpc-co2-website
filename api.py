@@ -688,7 +688,7 @@ async def get_user_report(uuid: str, month: str):
         for user in sorted(team["users"], key=lambda x: -x["_co2e"]):
             co2e = user.pop("_co2e")
             cost = user.pop("_cost")
-            if co2e / total_co2e >= 0.01:
+            if co2e >= 100e3 or co2e / total_co2e >= 0.01:
                 users.append(user)
 
         team["users"] = users
