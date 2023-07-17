@@ -186,7 +186,7 @@ async function getUserReport(apiUrl, uuid, month) {
                         <td class="details" colspan="4">
                             <span>
                                 There ${users.length > 1 ? 'are' : 'is'} ${users.length} member${users.length > 1 ? 's' : ''} 
-                                of this team with a significant carbon footprint:
+                                of this group with a significant carbon footprint:
                             </span>
                             <table class="celled">
                                 <thead><tr><th>Name</th><th>Carbon footprint</th><th>Cost</th></tr></thead>
@@ -222,12 +222,12 @@ async function getUserReport(apiUrl, uuid, month) {
         <h6>Memory efficiency</h6>
         <p>Only jobs with a memory request of at least 4GB were considered.</p>
         <div class="memory"></div>
-        <h6>Teams</h6>
-        <p>The footprint of the teams you belong to is displayed in the table below.</p>
+        <h6>Groups</h6>
+        <p>The footprint of the groups you belong to is displayed in the table below.</p>
         <table>
             <thead>
                 <tr>
-                    <th>Team</th>
+                    <th>Group</th>
                     <th>Carbon footprint</th>
                     <th>Cost</th>
                     <th>
@@ -313,7 +313,7 @@ async function initUser(apiUrl, uuid, user) {
                                     Contribution
                                     <i class="fa-solid fa-circle-question"
                                        data-position="top"
-                                       data-tooltip="Contribution to the team footprint"></i>
+                                       data-tooltip="Contribution to the group's footprint"></i>
                                 </th>
                             </tr>                        
                         </thead>
