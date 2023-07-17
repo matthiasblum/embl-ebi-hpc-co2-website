@@ -37,9 +37,12 @@ function stopObserver() {
 }
 
 function signOut() {
-    [sessionStorage, localStorage].forEach((storage) => {
-        storage.removeItem(SIGN_IN_KEY);
-    });
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('uuid')) {
+        [sessionStorage, localStorage].forEach((storage) => {
+            storage.removeItem(SIGN_IN_KEY);
+        });
+    }
 
     document.getElementById('uuid').className = '';
     document.querySelector('#details > form').style.display = null;
@@ -256,7 +259,7 @@ async function getUserReport(apiUrl, uuid, month) {
     M.Tooltip.init(targetDiv.querySelector('.fa-circle-question'), {});
 }
 
-async function initUser(apiUrl, uuid, user) {
+async function initUser(apiUrl, uuid, user, month) {
     document.querySelector('#user-info img').src = user.photoUrl || 'https://content.embl.org/sites/default/files/default_images/vf-icon--avatar.png';
 
     if (user.name !== null)
@@ -351,12 +354,9 @@ async function initUser(apiUrl, uuid, user) {
         document
             .getElementById('select-report')
             .addEventListener('change', (event) => {
-                const uuid = localStorage.getItem(SIGN_IN_KEY) || sessionStorage.getItem(SIGN_IN_KEY);
-                if (uuid !== null) {
-                    const reportId = event.currentTarget.value;
-                    if (reportId.length !== 0) {
-                        getUserReport(apiUrl, uuid, reportId);
-                    }
+                const reportId = event.currentTarget.value;
+                if (reportId.length !== 0) {
+                    getUserReport(apiUrl, uuid, reportId);
                 }
             });
     }
@@ -371,6 +371,12 @@ async function initUser(apiUrl, uuid, user) {
     M.Tabs.init(userTeams.querySelector('.tabs'));
     M.Tooltip.init(userTeams.querySelectorAll('.fa-circle-question'), {});
     resetScrollspy();
+
+    if (month !== null && month !== undefined) {
+        getUserReport(apiUrl, uuid, month);
+        document.getElementById('select-report').value = month;
+        document.querySelector('a[href="#user-reports"]').click();
+    }
 }
 
 async function getUserActivity(apiUrl, uuid) {

@@ -127,12 +127,13 @@ async function initApp(apiUrl, lastUpdated, contactEmail, contactSlack) {
             switchSignForm(apiUrl);
         });
 
-    const uuid = localStorage.getItem(SIGN_IN_KEY) || sessionStorage.getItem(SIGN_IN_KEY);
+    const params = new URLSearchParams(window.location.search);
+    const uuid = params.get('uuid') || localStorage.getItem(SIGN_IN_KEY) || sessionStorage.getItem(SIGN_IN_KEY);
     if (uuid !== null) {
         if (/^[a-z0-9]+$/.test(uuid)) {
             signIn(apiUrl, uuid)
                 .then((user) => {
-                    initUser(apiUrl, uuid, user);
+                    initUser(apiUrl, uuid, user, params.get('report'));
                 });
         } else {
             // Legacy stored data (JSON): force sign out
