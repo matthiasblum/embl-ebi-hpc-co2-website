@@ -373,7 +373,7 @@ async function initUser(apiUrl, uuid, user, month) {
     resetScrollspy();
 
     if (month !== null && month !== undefined) {
-        getUserReport(apiUrl, uuid, month);
+        await getUserReport(apiUrl, uuid, month);
         document.getElementById('select-report').value = month;
         document.querySelector('a[href="#user-reports"]').click();
     }

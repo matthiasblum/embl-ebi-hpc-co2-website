@@ -75,6 +75,8 @@ async function initApp(apiUrl, lastUpdated, contactEmail, contactSlack) {
         plotJobStatuses(apiUrl),
     ];
 
+    M.Modal.init(document.querySelector('#notification.modal'));
+
     document.getElementById('contact-email').href = `mailto:${contactEmail}`;
     if (contactSlack !== null || 1) {
         document.getElementById('contact-slack').innerHTML = ` 
@@ -83,8 +85,6 @@ async function initApp(apiUrl, lastUpdated, contactEmail, contactSlack) {
     }
 
     await Promise.all(promises);
-    document.getElementById('loader').style.display = 'none';
-    resetScrollspy();
     M.Pushpin.init(document.getElementById('toc-wrapper'), {
         top: 150,
         offset: 0
@@ -131,15 +131,16 @@ async function initApp(apiUrl, lastUpdated, contactEmail, contactSlack) {
     const uuid = params.get('uuid') || localStorage.getItem(SIGN_IN_KEY) || sessionStorage.getItem(SIGN_IN_KEY);
     if (uuid !== null) {
         if (/^[a-z0-9]+$/.test(uuid)) {
-            signIn(apiUrl, uuid)
-                .then((user) => {
-                    initUser(apiUrl, uuid, user, params.get('report'));
-                });
+            const user = await signIn(apiUrl, uuid);
+            await initUser(apiUrl, uuid, user, params.get('report'));
         } else {
             // Legacy stored data (JSON): force sign out
             signOut();
         }
     }
+
+    document.getElementById('loader').style.display = 'none';
+    resetScrollspy();
 
     document.getElementById('sign-out')
         .addEventListener('click', (event) => {
