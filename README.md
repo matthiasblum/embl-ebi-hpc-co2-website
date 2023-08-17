@@ -39,3 +39,7 @@ uvicorn [--reload] --host 0.0.0.0 --port 5000 --workers 4 api:app
 ```shell
 http-server --log-ip -a 0.0.0.0 -p 8080 client
 ```
+
+## Screenshot
+
+<a href="https://raw.githubusercontent.com/matthiasblum/embl-ebi-hpc-co2-website/main/embl-ebi-carbon-footprint.png"><img src="embl-ebi-carbon-footprint.png" alt="Screenshot of dashboard" height="400"/></a>
