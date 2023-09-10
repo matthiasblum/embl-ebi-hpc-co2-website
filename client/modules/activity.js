@@ -1,14 +1,13 @@
 import {fetchTeamActivity} from "./team.js";
 import {renderCo2Emissions, renderCpuTime, round} from "./utils.js";
 
-function updateOverallChart(categories, data, nSeries) {
+function updateOverallChart(categories, data, nSeries, othersOnTop) {
     const series = data.slice(0, nSeries);
     const others = {
         name: nSeries > 0 ? 'Others' : 'EMBL-EBI',
         data: new Array(categories.length).fill(0),
         color: '#607d8b',
     };
-
 
     data
         .slice(nSeries)
@@ -18,7 +17,13 @@ function updateOverallChart(categories, data, nSeries) {
             });
         });
 
-    series.push(others);
+    if (typeof othersOnTop !== "boolean")
+        othersOnTop = false;
+
+    if (othersOnTop)
+        series.splice(0, 0, others);
+    else
+        series.push(others);
 
     Highcharts.chart('overview-chart', {
         chart: {
@@ -95,6 +100,36 @@ async function showOverallActivity(apiUrl) {
     inputRange.addEventListener('change', (e,) => {
         updateOverallChart(categories, teams, Number.parseInt(e.currentTarget.value, 10));
     });
+
+    window.showOverallTeamActivity = (teamNames) => {
+        teamNames = teamNames.map((n) => n.toLowerCase());
+        const selection = JSON.parse(JSON.stringify(teams))
+            .sort((a, b) => {
+                if (teamNames.includes(a.name.toLowerCase())) {
+                    if (teamNames.includes(b.name.toLowerCase()))
+                        return b.total - a.total;
+                    else
+                        return -1;
+                } else if (teamNames.includes(b.name.toLowerCase())) {
+                    return 1;
+                }
+                return b.total - a.total;
+            });
+
+        selection.map((t) => {
+            if (teamNames.includes(t.name.toLowerCase()))
+                t.color = '#f44336';
+
+            return t;
+        });
+
+        updateOverallChart(
+            categories,
+            selection,
+            teamNames.length,
+            true
+        );
+    };
 }
 
 async function showRecentActivity(apiUrl) {
